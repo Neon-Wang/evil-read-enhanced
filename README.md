@@ -1,6 +1,6 @@
-# evil-read-arxiv
+# evil-read-enhanced
 
-> 邪修的论文阅读工作流 - 自动化论文搜索、推荐、分析和整理
+> 邪修的论文阅读工作流 - 自动化论文搜索、推荐、分析和整理（增强版：支持 Google Scholar）
 
 ## 语言 / Language
 
@@ -9,12 +9,13 @@
 
 ## 简介
 
-这是一套 Claude Code 技能（Skills）集合，用于自动化研究论文的搜索、推荐、分析和整理工作流。通过调用 arXiv 和 Semantic Scholar API，每天为你推荐高质量论文，并自动生成详细笔记和关系图谱。
+这是一套 Claude Code 技能（Skills）集合，用于自动化研究论文的搜索、推荐、分析和整理工作流。通过调用 arXiv、Semantic Scholar、DBLP 和 **Google Scholar**（通过 Chrome CDP Proxy 绕过反爬虫限制），每天为你推荐高质量论文，并自动生成详细笔记和关系图谱。
 
 ## 更新日志
 
 | 日期 | 版本 | 更新内容 |
 |------|------|----------|
+| 2026-03-31 | v1.2 | 新增 `scholar-search` 技能：通过 Chrome CDP Proxy 搜索 Google Scholar，绕过反爬虫限制，三维评分推荐，独立配置文件；新增 `CLAUDE.md` 项目文档；新增 `reportlab` 依赖支持 PDF 生成 |
 | 2026-03-13 | v1.1 | 新增 `conf-papers` 技能：支持搜索 CVPR/ICCV/ECCV/ICLR/AAAI/NeurIPS/ICML 等顶级会议论文，基于 DBLP + Semantic Scholar 双数据源，独立配置文件，三维评分推荐 |
 | 2026-03-01 | v1.0 | 初始版本：start-my-day 每日推荐、paper-analyze 论文分析、extract-paper-images 图片提取、paper-search 论文搜索 |
 
@@ -59,6 +60,16 @@
 - 两阶段过滤：标题关键词轻量筛选 → S2 补充 → 三维评分（相关性 40% + 热门度 40% + 质量 20%）
 - 前三篇论文自动生成详细分析（需有 arXiv ID）
 
+### 6. scholar-search - Google Scholar 搜索推荐（新增）
+- **通过 Chrome CDP Proxy 搜索 Google Scholar，绕过反爬虫限制**
+- 需要 Chrome 浏览器开启远程调试 + CDP Proxy 运行（来自 `web-access` skill）
+- 支持关键词搜索、年份过滤、分页抓取
+- 可选 Semantic Scholar 补充完整摘要和影响力引用数
+- 三维评分（相关性 40% + 热门度 40% + 质量 20%）
+- CAPTCHA 自动检测，提示用户在 Chrome 中手动解决
+- 独立配置文件 `scholar-search.yaml`
+- 覆盖面比 arXiv 更广（含已发表期刊/会议论文）
+
 ## 安装
 
 ### 前置要求
@@ -69,6 +80,11 @@
    ```bash
    pip install -r requirements.txt
    ```
+4. **Chrome 浏览器 + CDP Proxy**（仅 `scholar-search` 需要）：
+   - Chrome 浏览器需开启远程调试：打开 `chrome://flags`，启用 `#remote-debugging`（或使用 `chrome://inspect/#remote-debugging`）
+   - 需要 `web-access` skill 的 CDP Proxy（Node.js 22+）
+   - CDP Proxy 通过 HTTP API 操控真实 Chrome 实例，绕过 Google Scholar 反爬虫检测
+   - 启动方式：`bash ~/.claude/skills/web-access/scripts/check-deps.sh`（或手动运行 `CDP_PROXY_PORT=3457 node cdp-proxy.mjs`）
 
 ### 安装步骤
 
@@ -85,6 +101,8 @@
    cp -r evil-read-arxiv/paper-analyze ~/.claude/skills/
    cp -r evil-read-arxiv/extract-paper-images ~/.claude/skills/
    cp -r evil-read-arxiv/paper-search ~/.claude/skills/
+   cp -r evil-read-arxiv/conf-papers ~/.claude/skills/
+   cp -r evil-read-arxiv/scholar-search ~/.claude/skills/
    ```
 
 2. 配置环境变量和路径（见下文"配置"部分）
@@ -227,12 +245,23 @@ extract-paper-images 2602.12345
 paper-search "关键词"
 ```
 
+### 搜索 Google Scholar 论文（需 Chrome CDP Proxy）
+
+```bash
+scholar-search
+# 或指定年份范围
+scholar-search 2024 2025
+```
+
+> **注意**：`scholar-search` 需要 Chrome 浏览器已打开并开启远程调试，且 CDP Proxy 正在运行。首次使用前请参考上方"前置要求"第 4 点配置 Chrome。如果遇到 CAPTCHA 验证码，脚本会暂停并提示你在 Chrome 中手动完成验证。
+
 ## 目录结构
 
 ```
-evil-read-arxiv/
+evil-read-enhanced/
 ├── README.md                 # 本文件
 ├── QUICKSTART.md             # 快速开始指南
+├── CLAUDE.md                 # Claude Code 项目文档
 ├── config.example.yaml       # 配置模板（需要复制并修改）
 ├── requirements.txt          # Python 依赖
 ├── start-my-day/             # 每日推荐技能
@@ -252,23 +281,27 @@ evil-read-arxiv/
 │       └── extract_images.py # 图片提取脚本
 ├── paper-search/             # 论文搜索技能
 │   └── SKILL.md
-└── conf-papers/              # 顶会论文搜索推荐技能
+├── conf-papers/              # 顶会论文搜索推荐技能
+│   ├── SKILL.md
+│   ├── conf-papers.yaml      # 独立配置（关键词、会议、年份）
+│   └── scripts/
+│       └── search_conf_papers.py  # DBLP搜索 + S2补充 + 评分
+└── scholar-search/           # Google Scholar 搜索推荐技能（新增）
     ├── SKILL.md              # 技能定义文件
-    ├── conf-papers.yaml      # 独立配置（关键词、会议、年份）
+    ├── scholar-search.yaml   # 独立配置（关键词、年份、CDP端口）
     └── scripts/
-        └── search_conf_papers.py  # DBLP搜索 + S2补充 + 评分
+        └── search_scholar.py # Chrome CDP 爬取 + S2补充 + 评分
 ```
 
 ## 评分机制
 
-论文推荐评分基于四个维度：
+论文推荐评分基于多维度加权：
 
-| 维度 | 权重 | 说明 |
-|------|--------|------|
-| 相关性 | 40% | 与研究兴趣的匹配程度 |
-| 新近性 | 20% | 论文发布时间 |
-| 热门度 | 30% | 引用数/影响力 |
-| 质量 | 10% | 从摘要推断的方法质量 |
+| 数据源 | 相关性 | 新近性 | 热门度 | 质量 |
+|--------|--------|--------|--------|------|
+| 每日推荐 (arXiv) | 40% | 20% | 30% | 10% |
+| 顶会推荐 (DBLP) | 40% | — | 40% | 20% |
+| Scholar 推荐 (Google Scholar) | 40% | — | 40% | 20% |
 
 **评分细则**：
 - **相关性**：标题关键词匹配（+0.5/个）、摘要关键词匹配（+0.3/个）、类别匹配（+1.0）
@@ -370,5 +403,8 @@ MIT License
 
 - [arXiv](https://arxiv.org/) - 开放获取的学术论文预印本平台
 - [Semantic Scholar](https://www.semanticscholar.org/) - AI 驱动的学术研究平台
+- [Google Scholar](https://scholar.google.com/) - 学术搜索引擎
+- [DBLP](https://dblp.org/) - 计算机科学文献数据库
 - [Claude Code](https://claude.ai/claude-code) - AI 辅助的代码和写作工具
 - [Obsidian](https://obsidian.md/) - 强大的知识管理工具
+- [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/) - Chrome 远程调试协议

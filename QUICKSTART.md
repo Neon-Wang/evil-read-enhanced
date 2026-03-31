@@ -1,6 +1,6 @@
 # 快速开始指南
 
-这是使用 evil-read-arxiv 的三步快速设置指南。
+这是使用 evil-read-enhanced 的快速设置指南。
 
 ## 第一步：安装依赖
 
@@ -9,6 +9,15 @@
 ```bash
 pip install -r requirements.txt
 ```
+
+> 如果 Homebrew Python 报错 `externally-managed-environment`，使用 venv：
+> ```bash
+> python3 -m venv ~/.evil-read-arxiv-venv
+> source ~/.evil-read-arxiv-venv/bin/activate
+> pip install -r requirements.txt
+> # 将 venv 加入 PATH（添加到 ~/.zshrc 或 ~/.bashrc）
+> export PATH="$HOME/.evil-read-arxiv-venv/bin:$PATH"
+> ```
 
 ## 第二步：配置
 
@@ -66,13 +75,33 @@ cp -r evil-read-arxiv/start-my-day ~/.claude/skills/
 cp -r evil-read-arxiv/paper-analyze ~/.claude/skills/
 cp -r evil-read-arxiv/extract-paper-images ~/.claude/skills/
 cp -r evil-read-arxiv/paper-search ~/.claude/skills/
+cp -r evil-read-arxiv/conf-papers ~/.claude/skills/
+cp -r evil-read-arxiv/scholar-search ~/.claude/skills/
 
 # Windows PowerShell
 Copy-Item -Recurse evil-read-arxiv\start-my-day $env:USERPROFILE\.claude\skills\
 Copy-Item -Recurse evil-read-arxiv\paper-analyze $env:USERPROFILE\.claude\skills\
 Copy-Item -Recurse evil-read-arxiv\extract-paper-images $env:USERPROFILE\.claude\skills\
 Copy-Item -Recurse evil-read-arxiv\paper-search $env:USERPROFILE\.claude\skills\
+Copy-Item -Recurse evil-read-arxiv\conf-papers $env:USERPROFILE\.claude\skills\
+Copy-Item -Recurse evil-read-arxiv\scholar-search $env:USERPROFILE\.claude\skills\
 ```
+
+### 2.5 配置 Chrome CDP Proxy（仅 `scholar-search` 需要）
+
+`scholar-search` 技能通过真实 Chrome 浏览器访问 Google Scholar，绕过反爬虫限制。需要：
+
+1. **Chrome 开启远程调试**：打开 `chrome://flags`，搜索 `remote-debugging`，启用后重启 Chrome
+2. **安装 web-access skill**（提供 CDP Proxy）：确保 `~/.claude/skills/web-access/` 存在
+3. **启动 CDP Proxy**：
+   ```bash
+   bash ~/.claude/skills/web-access/scripts/check-deps.sh
+   # 如果默认 3456 端口被占用：
+   CDP_PROXY_PORT=3457 node ~/.claude/skills/web-access/scripts/cdp-proxy.mjs &
+   ```
+4. **验证**：`curl -s http://localhost:3457/targets` 应返回 JSON 数组
+
+> 如果不使用 `scholar-search`，可以跳过此步骤，其他 5 个技能不依赖 Chrome。
 
 ## 第三步：创建 Obsidian 目录结构
 
@@ -116,6 +145,16 @@ start my day
 
 ```
 paper-analyze 2602.12345
+```
+
+### 4. 搜索 Google Scholar 论文
+
+在 Claude Code 中输入（需 Chrome CDP Proxy 运行）：
+
+```
+scholar-search
+# 或指定年份
+scholar-search 2024 2025
 ```
 
 ## 常用 arXiv 分类
