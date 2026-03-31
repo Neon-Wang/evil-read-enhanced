@@ -1,0 +1,42 @@
+# scholar-search skill 专用配置
+
+# 搜索关键词（用于构建 Google Scholar 查询）
+keywords:
+  - "large language model"
+  - "LLM"
+  - "foundation model"
+  - "pre-training"
+  - "fine-tuning"
+  - "instruction tuning"
+  - "RLHF"
+  - "alignment"
+  - "reasoning"
+  - "chain-of-thought"
+  - "in-context learning"
+  - "scaling law"
+
+# 排除的关键词（标题含有这些词的论文会被过滤）
+excluded_keywords:
+  - "survey"
+  - "review"
+  - "tutorial"
+  - "workshop"
+
+# 默认年份范围
+default_year_from: 2024
+default_year_to: 2025
+
+# 每个查询抓取的最大页数（每页10条结果）
+max_pages: 2
+
+# 返回的论文数量
+top_n: 10
+
+# 页面请求间隔（秒），避免触发反爬虫
+request_delay: 5
+
+# CDP Proxy 地址（默认 3457，因 3456 可能被其他服务占用）
+cdp_proxy_url: "http://localhost:3457"
+
+# 是否用 Semantic Scholar 补充（获取完整摘要、影响力引用数、arXiv ID）
+enrich_with_s2: true
