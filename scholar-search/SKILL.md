@@ -42,7 +42,7 @@ PYTHON="$HOME/.evil-read-arxiv-venv/bin/python3"
 # 前置条件
 
 1. **Chrome 浏览器**已打开
-2. **CDP Proxy**已启动（通过 web-access skill 的 `check-deps.sh` 启动）
+2. **CDP Proxy**已启动（通过 web-access skill 的 `check-deps.sh` 启动，默认端口 `3457`；如已安装 Kimi WebBridge，也可在 `paper-query` 中使用真实浏览器后端辅助 Nature/Scholar 页面和 PDF 链接处理）
 3. Python venv 已安装依赖：`$HOME/.evil-read-arxiv-venv/`
 
 # 配置说明
@@ -60,7 +60,7 @@ default_year_to: 2025
 max_pages: 2           # 每个查询抓取的最大页数
 top_n: 10              # 返回论文数量
 request_delay: 5       # 请求间隔（秒）
-cdp_proxy_url: "http://localhost:3456"
+cdp_proxy_url: "http://localhost:3457"
 enrich_with_s2: true   # 是否用 Semantic Scholar 补充
 ```
 
@@ -79,7 +79,7 @@ enrich_with_s2: true   # 是否用 Semantic Scholar 补充
 
 ```bash
 # 检查 CDP Proxy 健康状态
-curl -s http://localhost:3456/health
+curl -s http://localhost:3457/health
 
 # 如果不可用，提示用户启动 web-access skill
 ```

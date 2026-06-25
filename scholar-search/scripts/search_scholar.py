@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import time
+import tempfile
 import logging
 import argparse
 from typing import List, Dict, Optional, Tuple
@@ -240,7 +241,7 @@ def load_scholar_config(config_path: str) -> Dict:
     config.setdefault('max_pages', 2)
     config.setdefault('top_n', 10)
     config.setdefault('request_delay', 5)
-    config.setdefault('cdp_proxy_url', 'http://localhost:3456')
+    config.setdefault('cdp_proxy_url', 'http://localhost:3457')
     config.setdefault('enrich_with_s2', True)
 
     return config
@@ -465,7 +466,7 @@ def handle_captcha(target_id: str, proxy_url: str) -> bool:
     Returns:
         True 如果 CAPTCHA 已解决，False 如果超时
     """
-    screenshot_path = '/tmp/scholar_captcha.png'
+    screenshot_path = os.path.join(tempfile.gettempdir(), 'scholar_captcha.png')
     cdp_screenshot(target_id, screenshot_path, proxy_url)
     logger.warning(
         "[CAPTCHA] Google Scholar 触发了验证码！"

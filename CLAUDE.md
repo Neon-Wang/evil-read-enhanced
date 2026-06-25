@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**evil-read-arxiv** is a collection of Claude Code Skills that automate academic paper research workflows. It searches arXiv, Semantic Scholar, DBLP, and Google Scholar for papers, scores/ranks them by research interest, and generates structured Obsidian notes with images and knowledge graph links.
+**evil-read-arxiv** is a collection of Claude Code Skills that automate academic paper research workflows. It searches arXiv, Semantic Scholar, DBLP, Google Scholar, and Nature for papers, scores/ranks them by research interest, and generates structured Obsidian notes with images and knowledge graph links. The `paper-query` skill is the unified multi-source entry point with provenance, verification status, PDF link handling, and deep-research-style synthesis.
 
 ## Architecture
 
-The project is organized as **6 independent Claude Code skills**, each in its own directory with a `SKILL.md` definition and `scripts/` folder containing Python scripts:
+The project is organized as **7 independent Claude Code skills**, each in its own directory with a `SKILL.md` definition and `scripts/` folder containing Python scripts:
 
 - **start-my-day** — Daily paper recommendations. Searches arXiv (last 30 days) + Semantic Scholar (last year), applies 4-dimensional scoring (relevance 40%, popularity 30%, recency 20%, quality 10%), generates a daily note, then auto-triggers paper-analyze + extract-paper-images for the top 3.
 - **paper-analyze** — Deep single-paper analysis. Downloads PDF + source package, generates structured Obsidian note with translations, method analysis, experimental results, and 5-dimension quality assessment.
@@ -16,12 +16,14 @@ The project is organized as **6 independent Claude Code skills**, each in its ow
 - **paper-search** — Searches existing vault notes via Grep (no dedicated Python script).
 - **conf-papers** — Conference paper recommendations from DBLP + Semantic Scholar. Uses its own independent config (`conf-papers.yaml`), 3-dimensional scoring (relevance 40%, popularity 40%, quality 20%).
 - **scholar-search** — Google Scholar paper search via Chrome CDP Proxy. Bypasses anti-bot measures using real browser automation. Uses its own config (`scholar-search.yaml`), 3-dimensional scoring (relevance 40%, popularity 40%, quality 20%). Requires Chrome + CDP Proxy running.
+- **paper-query** — Unified multi-source paper query. Normalizes arXiv, Semantic Scholar, DBLP, Google Scholar, and Nature into shared `PaperRecord` output with provenance, verification status, PDF link status, browser backend support (CDP or Kimi WebBridge), and optional deep-research-style synthesis.
 
 ### Cross-skill dependencies
 
 - `start-my-day` orchestrates `paper-analyze` and `extract-paper-images` for top-ranked papers
 - `conf-papers` reuses `start-my-day/scripts/scan_existing_notes.py` for vault indexing
 - `scholar-search` reuses `start-my-day/scripts/scan_existing_notes.py` and scoring functions from `search_arxiv.py`
+- `paper-query` wraps/reuses existing source logic where possible and can feed high-value results into `paper-analyze`, `extract-paper-images`, or Claude Code `deep-research` synthesis
 - All skills write to the same Obsidian vault structure
 
 ### External APIs
@@ -30,6 +32,7 @@ The project is organized as **6 independent Claude Code skills**, each in its ow
 - **Semantic Scholar API** — Citation counts, abstracts, author info (optional API key reduces rate limiting)
 - **DBLP API** — Conference paper metadata lookup
 - **Google Scholar** — Scraped via Chrome CDP Proxy (no official API); requires `web-access` skill's CDP Proxy
+- **Nature** — Browser-assisted search/article extraction through `paper-query`; supports CDP or Kimi WebBridge and records manual/paywall states without bypassing access controls
 
 ## Key Configuration
 
@@ -37,6 +40,7 @@ The project is organized as **6 independent Claude Code skills**, each in its ow
 - `$OBSIDIAN_VAULT_PATH/99_System/Config/research_interests.yaml` — Main research config (domains, keywords, arXiv categories, language)
 - `conf-papers/conf-papers.yaml` — Independent config for conference searches (keywords, excluded keywords, default year/conferences, top_n)
 - `scholar-search/scholar-search.yaml` — Independent config for Google Scholar searches (keywords, year range, CDP proxy port)
+- `paper-query/paper-query.yaml` — Unified multi-source config (source list, browser backend, PDF behavior, per-source limits)
 - `config.example.yaml` — Template; copy to vault's config path and customize
 
 ### Language setting
@@ -58,6 +62,8 @@ python paper-analyze/scripts/update_graph.py --vault "$OBSIDIAN_VAULT_PATH" --pa
 python extract-paper-images/scripts/extract_images.py --paper-id "2402.12345" --output-dir /path/to/images/
 python conf-papers/scripts/search_conf_papers.py --year 2024 --conferences "ICLR,CVPR"
 python scholar-search/scripts/search_scholar.py --config scholar-search/scholar-search.yaml --cdp-url http://localhost:3457 --year-from 2024 --year-to 2025
+python paper-query/scripts/run_query.py --query "large language model" --sources arxiv,semantic_scholar,dblp --year-from 2024 --year-to 2026
+python paper-query/scripts/smoke_offline.py
 ```
 
 There is no formal test suite. Scripts are validated by running them end-to-end.
@@ -92,5 +98,6 @@ Papers are scored on weighted dimensions before recommendation:
 | Daily (arXiv) | 40% | 20% | 30% | 10% |
 | Conference | 40% | — | 40% | 20% |
 | Scholar | 40% | — | 40% | 20% |
+| Paper query | 40% | optional | 30% | 20% (+ verification 10%) |
 
-Scoring logic lives in `search_arxiv.py:calculate_recommendation_score`, `search_conf_papers.py`, and `search_scholar.py`.
+Scoring logic lives in `search_arxiv.py:calculate_recommendation_score`, `search_conf_papers.py`, `search_scholar.py`, and `paper-query/scripts/paper_query/scoring.py`.

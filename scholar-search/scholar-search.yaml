@@ -38,5 +38,9 @@ request_delay: 5
 # CDP Proxy 地址（默认 3457，因 3456 可能被其他服务占用）
 cdp_proxy_url: "http://localhost:3457"
 
+# 浏览器后端说明：scholar-search 仍使用 CDP；多源 paper-query 可选择 auto/webbridge/cdp/none。
+browser_backend: "cdp"
+webbridge_url: "http://127.0.0.1:10086"
+
 # 是否用 Semantic Scholar 补充（获取完整摘要、影响力引用数、arXiv ID）
 enrich_with_s2: true

@@ -9,7 +9,7 @@
 
 ## Introduction
 
-This is a collection of Claude Code Skills for automating research paper search, recommendation, analysis, and organization. By calling arXiv and Semantic Scholar APIs, it recommends high-quality papers daily and automatically generates detailed notes and knowledge graphs.
+This is a collection of Claude Code Skills for automating research paper search, recommendation, analysis, and organization. It now supports arXiv, Semantic Scholar, DBLP, Google Scholar, and Nature through a unified `paper-query` entry point, with browser-assisted retrieval, PDF link detection, source provenance, and deep-research-style synthesis.
 
 ## Features
 
@@ -45,6 +45,23 @@ This is a collection of Claude Code Skills for automating research paper search,
 - Support searching by title, author, keywords, domain
 - Sort by relevance score
 
+### 5. conf-papers - Conference Paper Recommendations
+- Search top conference papers from CVPR/ICCV/ECCV/ICLR/AAAI/NeurIPS/ICML
+- Use DBLP for publication metadata and Semantic Scholar for abstracts/citations
+- Independent `conf-papers.yaml` configuration
+
+### 6. scholar-search - Google Scholar Recommendations
+- Search Google Scholar through Chrome CDP Proxy (`http://localhost:3457` by default)
+- Supports keyword search, year filters, pagination, CAPTCHA/manual handling, and optional S2 enrichment
+
+### 7. paper-query - Multi-Source Paper Query and Deep Research
+- Query arXiv, Semantic Scholar, DBLP, Google Scholar, and Nature from one entry point
+- Normalize results into one `PaperRecord` schema with provenance and verification status
+- Dedupe by DOI, arXiv ID, Semantic Scholar URL, primary URL, and normalized title
+- Detect PDF links and status; PDF download is opt-in
+- Supports Chrome CDP Proxy and optional Kimi WebBridge for real-browser sessions
+- Can hand structured results to Claude Code `deep-research` for verified recommendation reports
+
 ## Installation
 
 ### Prerequisites
@@ -55,6 +72,9 @@ This is a collection of Claude Code Skills for automating research paper search,
    ```bash
    pip install -r requirements.txt
    ```
+4. **Browser backend** for Google Scholar/Nature sources:
+   - Chrome CDP Proxy: default `http://localhost:3457`, compatible with the existing `scholar-search` flow
+   - Kimi WebBridge (optional): default `http://127.0.0.1:10086`, useful for real-browser login sessions and Nature PDF links
 
 ### Installation Steps
 
@@ -65,12 +85,18 @@ This is a collection of Claude Code Skills for automating research paper search,
    Copy-Item -Recurse evil-read-arxiv\paper-analyze $env:USERPROFILE\.claude\skills\
    Copy-Item -Recurse evil-read-arxiv\extract-paper-images $env:USERPROFILE\.claude\skills\
    Copy-Item -Recurse evil-read-arxiv\paper-search $env:USERPROFILE\.claude\skills\
+   Copy-Item -Recurse evil-read-arxiv\conf-papers $env:USERPROFILE\.claude\skills\
+   Copy-Item -Recurse evil-read-arxiv\scholar-search $env:USERPROFILE\.claude\skills\
+   Copy-Item -Recurse evil-read-arxiv\paper-query $env:USERPROFILE\.claude\skills\
 
    # macOS/Linux
    cp -r evil-read-arxiv/start-my-day ~/.claude/skills/
    cp -r evil-read-arxiv/paper-analyze ~/.claude/skills/
    cp -r evil-read-arxiv/extract-paper-images ~/.claude/skills/
    cp -r evil-read-arxiv/paper-search ~/.claude/skills/
+   cp -r evil-read-arxiv/conf-papers ~/.claude/skills/
+   cp -r evil-read-arxiv/scholar-search ~/.claude/skills/
+   cp -r evil-read-arxiv/paper-query ~/.claude/skills/
    ```
 
 2. Configure environment variables and paths (see "Configuration" below)
@@ -216,6 +242,32 @@ extract-paper-images 2602.12345
 paper-search "keyword"
 ```
 
+### Multi-source Paper Query
+
+```bash
+paper-query "form meaning mappings language"
+```
+
+Or run the script directly:
+
+```bash
+python paper-query/scripts/run_query.py \
+  --query "form meaning mappings language" \
+  --sources arxiv,semantic_scholar,dblp,google_scholar,nature \
+  --top-n 10
+```
+
+`paper-query` emits normalized JSON with source provenance, verification status, DOI/arXiv/S2 IDs, PDF link status, and recommendation scores. If the browser backend is unavailable, API-only sources still run and browser sources are marked as requiring manual/browser access.
+
+### Search Google Scholar Papers
+
+```bash
+scholar-search
+scholar-search 2024 2025
+```
+
+Requires Chrome CDP Proxy at `http://localhost:3457`.
+
 ## Directory Structure
 
 ```
@@ -240,20 +292,37 @@ evil-read-arxiv/
 │   ├── SKILL.md
 │   └── scripts/
 │       └── extract_images.py # Image extraction script
-└── paper-search/             # Paper search skill
-    └── SKILL.md
+├── paper-search/             # Local paper note search skill
+│   └── SKILL.md
+├── conf-papers/              # Conference recommendation skill
+│   ├── SKILL.md
+│   ├── conf-papers.yaml
+│   └── scripts/
+│       └── search_conf_papers.py
+├── scholar-search/           # Google Scholar recommendation skill
+│   ├── SKILL.md
+│   ├── scholar-search.yaml
+│   └── scripts/
+│       └── search_scholar.py
+└── paper-query/              # Multi-source paper query skill
+    ├── SKILL.md
+    ├── paper-query.yaml
+    └── scripts/
+        ├── run_query.py
+        ├── smoke_offline.py
+        └── paper_query/
 ```
 
 ## Scoring Mechanism
 
-Paper recommendation scoring based on four dimensions:
+Paper recommendation scoring is source-aware:
 
-| Dimension | Weight | Description |
-|-----------|--------|-------------|
-| Relevance | 40% | Match with research interests |
-| Recency | 20% | Paper publication time |
-| Popularity | 30% | Citation count/influence |
-| Quality | 10% | Method quality inferred from abstract |
+| Context | Relevance | Recency | Popularity | Quality / Verification |
+|---------|-----------|---------|------------|------------------------|
+| Daily arXiv | 40% | 20% | 30% | 10% quality |
+| Conference DBLP | 40% | — | 40% | 20% quality |
+| Google Scholar | 40% | — | 40% | 20% quality |
+| paper-query | 40% | optional | 30% | 20% quality + 10% verification |
 
 **Scoring Details**:
 - **Relevance**: Title keyword match (+0.5/each), abstract keyword match (+0.3/each), category match (+1.0)

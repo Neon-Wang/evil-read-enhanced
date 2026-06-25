@@ -1,6 +1,6 @@
 # evil-read-enhanced
 
-> 邪修的论文阅读工作流 - 自动化论文搜索、推荐、分析和整理（增强版：支持 Google Scholar）
+> 邪修的论文阅读工作流 - 自动化论文搜索、推荐、分析和整理（增强版：支持多源论文查询、Google Scholar、Nature 与浏览器辅助检索）
 
 ## 语言 / Language
 
@@ -9,12 +9,13 @@
 
 ## 简介
 
-这是一套 Claude Code 技能（Skills）集合，用于自动化研究论文的搜索、推荐、分析和整理工作流。通过调用 arXiv、Semantic Scholar、DBLP 和 **Google Scholar**（通过 Chrome CDP Proxy 绕过反爬虫限制），每天为你推荐高质量论文，并自动生成详细笔记和关系图谱。
+这是一套 Claude Code 技能（Skills）集合，用于自动化研究论文的搜索、推荐、分析和整理工作流。通过调用 arXiv、Semantic Scholar、DBLP、**Google Scholar**（Chrome CDP Proxy）和 **Nature**（浏览器辅助检索），每天为你推荐高质量论文，并自动生成详细笔记和关系图谱。新增的 `paper-query` 统一入口会合并多来源结果、保留来源证据、识别 PDF 链接，并可结合 Claude Code 的 `deep-research` 工作流生成综合研究报告。
 
 ## 更新日志
 
 | 日期 | 版本 | 更新内容 |
 |------|------|----------|
+| 2026-06-25 | v1.3 | 新增 `paper-query` 技能：统一多源论文查询框架，首批覆盖 arXiv、Semantic Scholar、DBLP、Google Scholar、Nature；支持 CDP/Kimi WebBridge 浏览器后端、PDF 链接识别、来源 provenance、verification status 与 deep-research 式综合报告 |
 | 2026-03-31 | v1.2 | 新增 `scholar-search` 技能：通过 Chrome CDP Proxy 搜索 Google Scholar，绕过反爬虫限制，三维评分推荐，独立配置文件；新增 `CLAUDE.md` 项目文档；新增 `reportlab` 依赖支持 PDF 生成 |
 | 2026-03-13 | v1.1 | 新增 `conf-papers` 技能：支持搜索 CVPR/ICCV/ECCV/ICLR/AAAI/NeurIPS/ICML 等顶级会议论文，基于 DBLP + Semantic Scholar 双数据源，独立配置文件，三维评分推荐 |
 | 2026-03-01 | v1.0 | 初始版本：start-my-day 每日推荐、paper-analyze 论文分析、extract-paper-images 图片提取、paper-search 论文搜索 |
@@ -60,15 +61,23 @@
 - 两阶段过滤：标题关键词轻量筛选 → S2 补充 → 三维评分（相关性 40% + 热门度 40% + 质量 20%）
 - 前三篇论文自动生成详细分析（需有 arXiv ID）
 
-### 6. scholar-search - Google Scholar 搜索推荐（新增）
+### 6. scholar-search - Google Scholar 搜索推荐
 - **通过 Chrome CDP Proxy 搜索 Google Scholar，绕过反爬虫限制**
-- 需要 Chrome 浏览器开启远程调试 + CDP Proxy 运行（来自 `web-access` skill）
+- 需要 Chrome 浏览器开启远程调试 + CDP Proxy 运行（来自 `web-access` skill，默认端口 `3457`）
 - 支持关键词搜索、年份过滤、分页抓取
 - 可选 Semantic Scholar 补充完整摘要和影响力引用数
 - 三维评分（相关性 40% + 热门度 40% + 质量 20%）
 - CAPTCHA 自动检测，提示用户在 Chrome 中手动解决
 - 独立配置文件 `scholar-search.yaml`
 - 覆盖面比 arXiv 更广（含已发表期刊/会议论文）
+
+### 7. paper-query - 多源论文查询与 deep-research 综合推荐（新增）
+- 统一查询 arXiv、Semantic Scholar、DBLP、Google Scholar、Nature
+- 将不同来源标准化为同一 `PaperRecord` 输出，保留 provenance 和 verification status
+- 支持 DOI、arXiv ID、Semantic Scholar URL、归一化标题去重
+- 支持 PDF 链接识别和状态记录；默认不下载 PDF，显式请求才下载
+- 浏览器后端支持 Kimi WebBridge（真实登录态）和 Chrome CDP Proxy（兼容旧 Scholar 流程）
+- 可将结构化候选交给 Claude Code `deep-research` 做交叉核验、阅读顺序和推荐理由综合
 
 ## 安装
 
@@ -80,11 +89,10 @@
    ```bash
    pip install -r requirements.txt
    ```
-4. **Chrome 浏览器 + CDP Proxy**（仅 `scholar-search` 需要）：
-   - Chrome 浏览器需开启远程调试：打开 `chrome://flags`，启用 `#remote-debugging`（或使用 `chrome://inspect/#remote-debugging`）
-   - 需要 `web-access` skill 的 CDP Proxy（Node.js 22+）
-   - CDP Proxy 通过 HTTP API 操控真实 Chrome 实例，绕过 Google Scholar 反爬虫检测
-   - 启动方式：`bash ~/.claude/skills/web-access/scripts/check-deps.sh`（或手动运行 `CDP_PROXY_PORT=3457 node cdp-proxy.mjs`）
+4. **浏览器后端**（`scholar-search` 与 `paper-query` 的 Google Scholar/Nature 来源需要）：
+   - Chrome CDP Proxy：Chrome 浏览器需开启远程调试；需要 `web-access` skill 的 CDP Proxy（Node.js 22+）；默认端口 `3457`
+   - Kimi WebBridge（可选）：用于真实浏览器登录态、Nature 文章页和 PDF 链接处理；daemon 地址 `http://127.0.0.1:10086`
+   - CDP 启动方式：`bash ~/.claude/skills/web-access/scripts/check-deps.sh`（或手动运行 `CDP_PROXY_PORT=3457 node cdp-proxy.mjs`）
 
 ### 安装步骤
 
@@ -95,6 +103,9 @@
    Copy-Item -Recurse evil-read-arxiv\paper-analyze $env:USERPROFILE\.claude\skills\
    Copy-Item -Recurse evil-read-arxiv\extract-paper-images $env:USERPROFILE\.claude\skills\
    Copy-Item -Recurse evil-read-arxiv\paper-search $env:USERPROFILE\.claude\skills\
+   Copy-Item -Recurse evil-read-arxiv\conf-papers $env:USERPROFILE\.claude\skills\
+   Copy-Item -Recurse evil-read-arxiv\scholar-search $env:USERPROFILE\.claude\skills\
+   Copy-Item -Recurse evil-read-arxiv\paper-query $env:USERPROFILE\.claude\skills\
 
    # macOS/Linux
    cp -r evil-read-arxiv/start-my-day ~/.claude/skills/
@@ -103,6 +114,7 @@
    cp -r evil-read-arxiv/paper-search ~/.claude/skills/
    cp -r evil-read-arxiv/conf-papers ~/.claude/skills/
    cp -r evil-read-arxiv/scholar-search ~/.claude/skills/
+   cp -r evil-read-arxiv/paper-query ~/.claude/skills/
    ```
 
 2. 配置环境变量和路径（见下文"配置"部分）
@@ -245,6 +257,25 @@ extract-paper-images 2602.12345
 paper-search "关键词"
 ```
 
+### 多源查询论文（arXiv / S2 / DBLP / Scholar / Nature）
+
+```bash
+paper-query "form meaning mappings language"
+```
+
+或直接运行脚本：
+
+```bash
+python paper-query/scripts/run_query.py \
+  --query "form meaning mappings language" \
+  --sources arxiv,semantic_scholar,dblp,google_scholar,nature \
+  --year-from 2024 \
+  --year-to 2026 \
+  --top-n 10
+```
+
+`paper-query` 会输出统一 JSON：包含来源 provenance、verification status、DOI/arXiv/S2 ID、PDF 链接状态和推荐分数。Google Scholar 与 Nature 需要浏览器后端；如果浏览器不可用，会跳过这些来源并保留 API-only 结果。
+
 ### 搜索 Google Scholar 论文（需 Chrome CDP Proxy）
 
 ```bash
@@ -286,11 +317,18 @@ evil-read-enhanced/
 │   ├── conf-papers.yaml      # 独立配置（关键词、会议、年份）
 │   └── scripts/
 │       └── search_conf_papers.py  # DBLP搜索 + S2补充 + 评分
-└── scholar-search/           # Google Scholar 搜索推荐技能（新增）
-    ├── SKILL.md              # 技能定义文件
-    ├── scholar-search.yaml   # 独立配置（关键词、年份、CDP端口）
+├── scholar-search/           # Google Scholar 搜索推荐技能
+│   ├── SKILL.md              # 技能定义文件
+│   ├── scholar-search.yaml   # 独立配置（关键词、年份、CDP端口）
+│   └── scripts/
+│       └── search_scholar.py # Chrome CDP 爬取 + S2补充 + 评分
+└── paper-query/              # 多源论文查询与 deep-research 编排技能（新增）
+    ├── SKILL.md
+    ├── paper-query.yaml
     └── scripts/
-        └── search_scholar.py # Chrome CDP 爬取 + S2补充 + 评分
+        ├── run_query.py
+        ├── smoke_offline.py
+        └── paper_query/      # 统一模型、来源 adapters、浏览器/PDF/评分工具
 ```
 
 ## 评分机制
@@ -302,6 +340,7 @@ evil-read-enhanced/
 | 每日推荐 (arXiv) | 40% | 20% | 30% | 10% |
 | 顶会推荐 (DBLP) | 40% | — | 40% | 20% |
 | Scholar 推荐 (Google Scholar) | 40% | — | 40% | 20% |
+| 多源查询 (paper-query) | 40% | 可选 | 30% | 20% + verification 10% |
 
 **评分细则**：
 - **相关性**：标题关键词匹配（+0.5/个）、摘要关键词匹配（+0.3/个）、类别匹配（+1.0）

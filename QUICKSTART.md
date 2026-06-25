@@ -67,7 +67,7 @@ Copy-Item config.yaml "$env:OBSIDIAN_VAULT_PATH\99_System\Config\research_intere
 
 ### 2.4 将技能安装到 Claude Code
 
-将 evil-read-arxiv 目录中的四个技能文件夹复制到你的 Claude Code skills 目录：
+将 evil-read-arxiv 目录中的技能文件夹复制到你的 Claude Code skills 目录：
 
 ```bash
 # macOS/Linux
@@ -77,6 +77,7 @@ cp -r evil-read-arxiv/extract-paper-images ~/.claude/skills/
 cp -r evil-read-arxiv/paper-search ~/.claude/skills/
 cp -r evil-read-arxiv/conf-papers ~/.claude/skills/
 cp -r evil-read-arxiv/scholar-search ~/.claude/skills/
+cp -r evil-read-arxiv/paper-query ~/.claude/skills/
 
 # Windows PowerShell
 Copy-Item -Recurse evil-read-arxiv\start-my-day $env:USERPROFILE\.claude\skills\
@@ -85,23 +86,28 @@ Copy-Item -Recurse evil-read-arxiv\extract-paper-images $env:USERPROFILE\.claude
 Copy-Item -Recurse evil-read-arxiv\paper-search $env:USERPROFILE\.claude\skills\
 Copy-Item -Recurse evil-read-arxiv\conf-papers $env:USERPROFILE\.claude\skills\
 Copy-Item -Recurse evil-read-arxiv\scholar-search $env:USERPROFILE\.claude\skills\
+Copy-Item -Recurse evil-read-arxiv\paper-query $env:USERPROFILE\.claude\skills\
 ```
 
-### 2.5 配置 Chrome CDP Proxy（仅 `scholar-search` 需要）
+### 2.5 配置浏览器后端（`scholar-search` 及 `paper-query` 的 Scholar/Nature 来源需要）
 
-`scholar-search` 技能通过真实 Chrome 浏览器访问 Google Scholar，绕过反爬虫限制。需要：
+`scholar-search` 和 `paper-query` 的 Google Scholar/Nature 来源需要真实浏览器。可选后端：
 
-1. **Chrome 开启远程调试**：打开 `chrome://flags`，搜索 `remote-debugging`，启用后重启 Chrome
-2. **安装 web-access skill**（提供 CDP Proxy）：确保 `~/.claude/skills/web-access/` 存在
-3. **启动 CDP Proxy**：
-   ```bash
-   bash ~/.claude/skills/web-access/scripts/check-deps.sh
-   # 如果默认 3456 端口被占用：
-   CDP_PROXY_PORT=3457 node ~/.claude/skills/web-access/scripts/cdp-proxy.mjs &
-   ```
-4. **验证**：`curl -s http://localhost:3457/targets` 应返回 JSON 数组
+1. **Chrome CDP Proxy**（兼容旧流程，默认 `http://localhost:3457`）
+   - Chrome 开启远程调试：打开 `chrome://flags`，搜索 `remote-debugging`，启用后重启 Chrome
+   - 安装 web-access skill（提供 CDP Proxy）：确保 `~/.claude/skills/web-access/` 存在
+   - 启动 CDP Proxy：
+     ```bash
+     bash ~/.claude/skills/web-access/scripts/check-deps.sh
+     CDP_PROXY_PORT=3457 node ~/.claude/skills/web-access/scripts/cdp-proxy.mjs &
+     ```
+   - 验证：`curl -s http://localhost:3457/targets` 应返回 JSON 数组
 
-> 如果不使用 `scholar-search`，可以跳过此步骤，其他 5 个技能不依赖 Chrome。
+2. **Kimi WebBridge**（可选，适合 Nature 文章页、PDF 链接和真实登录态）
+   - daemon 默认地址：`http://127.0.0.1:10086`
+   - 验证：`& "$env:USERPROFILE\.kimi-webbridge\bin\kimi-webbridge.exe" status` 或 `kimi-webbridge status`
+
+> 如果不使用 `scholar-search`、Google Scholar 或 Nature 来源，可以跳过此步骤，API-only 来源（arXiv/Semantic Scholar/DBLP）不依赖浏览器。
 
 ## 第三步：创建 Obsidian 目录结构
 
@@ -156,6 +162,23 @@ scholar-search
 # 或指定年份
 scholar-search 2024 2025
 ```
+
+### 5. 多源论文查询
+
+```bash
+paper-query "form meaning mappings language"
+```
+
+或直接运行脚本：
+
+```bash
+python paper-query/scripts/run_query.py \
+  --query "form meaning mappings language" \
+  --sources arxiv,semantic_scholar,dblp,google_scholar,nature \
+  --top-n 10
+```
+
+浏览器不可用时，`paper-query` 会继续返回 arXiv/Semantic Scholar/DBLP 等 API-only 结果，并标记 Scholar/Nature 需要浏览器后端。
 
 ## 常用 arXiv 分类
 

@@ -1,0 +1,61 @@
+# paper-query skill configuration
+
+# Default sources used when /paper-query does not specify --sources.
+sources:
+  - arxiv
+  - semantic_scholar
+  - dblp
+  - google_scholar
+  - nature
+
+top_n: 10
+max_pages: 1
+download_pdfs: false
+enrich_with_s2: false
+
+# Optional standalone keywords. If empty, paper-query will reuse
+# research_domains keywords from $OBSIDIAN_VAULT_PATH/99_System/Config/research_interests.yaml.
+keywords: []
+excluded_keywords:
+  - survey
+  - review
+  - tutorial
+  - workshop
+
+browser:
+  # auto tries Kimi WebBridge first, then CDP Proxy.
+  # Use none for API-only searches.
+  backend: auto
+  webbridge_url: "http://127.0.0.1:10086"
+  cdp_proxy_url: "http://localhost:3457"
+  manual_timeout_seconds: 120
+  screenshot_dir: ""
+
+arxiv:
+  arxiv_categories:
+    - cs.AI
+    - cs.LG
+    - cs.CL
+    - cs.CV
+    - cs.MM
+  max_results: 50
+
+semantic_scholar:
+  enabled: true
+
+dblp:
+  default_conferences:
+    - ICLR
+    - NeurIPS
+    - ICML
+    - CVPR
+  max_per_venue: 200
+
+google_scholar:
+  enabled: true
+  max_pages: 1
+
+nature:
+  enabled: true
+  max_pages: 1
+  download_pdfs: false
