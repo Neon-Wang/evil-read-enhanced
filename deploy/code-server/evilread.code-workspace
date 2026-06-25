@@ -1,0 +1,40 @@
+{
+  "folders": [
+    {
+      "name": "evilread-workspace",
+      "path": "/C:/GitClient/windows/repos/evilread-workspace"
+    },
+    {
+      "name": "evil-read-enhanced",
+      "path": "/C:/Users/O2/Documents/GitHub/evil-read-enhanced"
+    }
+  ],
+  "settings": {
+    "terminal.integrated.cwd": "C:\\GitClient\\windows\\repos\\evilread-workspace",
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "terminal.integrated.profiles.windows": {
+      "PowerShell": {
+        "source": "PowerShell",
+        "icon": "terminal-powershell"
+      },
+      "Git Bash": {
+        "path": "C:\\Program Files\\Git\\bin\\bash.exe"
+      }
+    },
+    "files.exclude": {
+      "**/.git": false
+    },
+    "workbench.editorAssociations": {
+      "*.pdf": "pdf.preview"
+    },
+    "security.workspace.trust.enabled": true,
+    "security.workspace.trust.startupPrompt": "never"
+  },
+  "extensions": {
+    "recommendations": [
+      "yzhang.markdown-all-in-one",
+      "tomoki1207.pdf",
+      "foam.foam-vscode"
+    ]
+  }
+}
