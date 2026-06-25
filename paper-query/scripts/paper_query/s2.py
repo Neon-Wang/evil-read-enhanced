@@ -9,6 +9,7 @@ from typing import Dict, Iterable, List, Optional
 from urllib.parse import urlencode
 import urllib.request
 
+from .http import urlopen
 from .models import PaperRecord, SourceProvenance, VerificationStatus
 
 S2_API_URL = "https://api.semanticscholar.org/graph/v1/paper/search"
@@ -34,7 +35,7 @@ def search_by_title(title: str, api_key: str = "", max_retries: int = 3) -> Opti
     request = urllib.request.Request(f"{S2_API_URL}?{params}", headers=headers)
     for attempt in range(max_retries):
         try:
-            with urllib.request.urlopen(request, timeout=20) as response:
+            with urlopen(request, timeout=20) as response:
                 data = json.loads(response.read().decode("utf-8"))
             results = data.get("data", [])
             if not results:

@@ -15,6 +15,8 @@
 
 | 日期 | 版本 | 更新内容 |
 |------|------|----------|
+| 2026-06-25 | v1.5 | 闭环改为 `evilread-workspace` monorepo：`vault/` 与 `zotero/` 同仓同步，Obsidian 使用相对链接指向 Zotero PDF 镜像，Zotero 本体保留原 PDF 与翻译 PDF stored attachments |
+| 2026-06-25 | v1.4 | 新增 Zotero ↔ Obsidian ↔ Skills 闭环 v1：本地 Gitea 双仓 `evilread-vault` / `evilread-zotero`、Zotero ingest、PDF2zh 翻译检测、Zotero artifact sync、daily 评论回写偏好与全文索引 |
 | 2026-06-25 | v1.3 | 新增 `paper-query` 技能：统一多源论文查询框架，首批覆盖 arXiv、Semantic Scholar、DBLP、Google Scholar、Nature；支持 CDP/Kimi WebBridge 浏览器后端、PDF 链接识别、来源 provenance、verification status 与 deep-research 式综合报告 |
 | 2026-03-31 | v1.2 | 新增 `scholar-search` 技能：通过 Chrome CDP Proxy 搜索 Google Scholar，绕过反爬虫限制，三维评分推荐，独立配置文件；新增 `CLAUDE.md` 项目文档；新增 `reportlab` 依赖支持 PDF 生成 |
 | 2026-03-13 | v1.1 | 新增 `conf-papers` 技能：支持搜索 CVPR/ICCV/ECCV/ICLR/AAAI/NeurIPS/ICML 等顶级会议论文，基于 DBLP + Semantic Scholar 双数据源，独立配置文件，三维评分推荐 |
@@ -23,12 +25,13 @@
 ## 功能特点
 
 ### 1. start-my-day - 每日论文推荐
-- 从 arXiv 搜索最近一个月的论文
-- 从 Semantic Scholar 搜索过去一年的高热度论文
-- 基于相关性、新近性、热门度、质量四个维度综合评分
-- 自动生成今日概览和推荐列表
-- 前三篇论文自动生成详细分析和提取图片
-- 自动链接关键词到已有笔记
+- 作为 Zotero ↔ Obsidian ↔ Skills 闭环入口，按 Fetch、Reflect、Discover、Ingest + Translate + Sync、Daily Note 五阶段运行
+- 先从 `evilread-workspace` monorepo 拉取最新内容，再把 daily 评论回写到 `vault/99_System/Config/research_interests.yaml`
+- 使用 `paper-query` 生成 Confirmed 与 Exploration 两类候选
+- 通过 Zotero Connector 写入 Zotero，并用 `evilread:collection:Library/...` 标签记录 Confirmed/Exploration 归属；随后可用 `tools/zotero_runjs_collections.py` 通过 Zotero Run JavaScript 补齐 native collection
+- 检测 PDF2zh 翻译产物，并将原 PDF、翻译 PDF、BibTeX 同步到 `evilread-workspace/zotero`
+- 在 Zotero 本体中给论文条目挂载原 PDF 与翻译 PDF stored attachments
+- 生成包含 Zotero 镜像和空评论模板的 Obsidian daily note
 
 ### 2. paper-analyze - 论文深度分析
 - 深度分析单篇论文
@@ -222,12 +225,13 @@ start my day
 ```
 
 这会：
-1. 搜索最近一个月和过去一年的高质量论文
-2. 根据你的研究兴趣筛选和评分
-3. 生成今日推荐笔记（保存到 `10_Daily/` 目录）
-4. 对前三篇论文自动生成详细分析
-5. 提取论文图片并插入笔记
-6. 自动链接关键词到已有笔记
+1. 拉取 `C:/GitClient/windows/repos/evilread-workspace`
+2. 解析最近 daily note 的 `+interest:`、`-avoid:`、`!deepen:`、`?question:` 评论并更新研究偏好
+3. 运行 `paper-query` 生成 Confirmed 与 Exploration 候选
+4. 通过 Zotero Connector 写入条目，并用 collection intent tag 与 `30_Inbox/Zotero/` 镜像记录当天分组；如需 Zotero 侧原生 collection，打开 Zotero Run JavaScript 窗口后执行 `tools/zotero_runjs_collections.py --confirmed-result confirmed.json --exploration-result exploration.json --date <YYYY-MM-DD> --execute`
+5. 检查 PDF2zh 翻译产物，同步 PDF、翻译 PDF 和 BibTeX 到 `evilread-workspace/zotero`
+6. 通过 `tools/zotero_runjs_attachments.py` 将原 PDF 与翻译 PDF 导入 Zotero 本体 stored attachments
+7. 生成今日推荐笔记（保存到 `10_Daily/` 目录）
 
 ### 分析单篇论文
 
@@ -295,6 +299,18 @@ evil-read-enhanced/
 ├── CLAUDE.md                 # Claude Code 项目文档
 ├── config.example.yaml       # 配置模板（需要复制并修改）
 ├── requirements.txt          # Python 依赖
+├── tools/                    # Zotero/Obsidian 闭环工具
+│   ├── safety_scan.py        # commit 前敏感信息扫描
+│   ├── start_my_day_reflect.py # daily 评论回写研究偏好
+│   ├── start_my_day_daily.py # 生成闭环 daily note
+│   ├── zotero_ingest.py      # paper-query 结果写入 Zotero Connector 并记录 collection intent
+│   ├── zotero_runjs_collections.py # 通过 Zotero Run JavaScript 补齐 native collections
+│   ├── translate_watch.py    # PDF2zh 健康检查与翻译产物检测
+│   ├── zotero_sync.py        # PDF / 翻译 PDF / BibTeX 同步到 evilread-workspace/zotero
+│   ├── zotero_runjs_attachments.py # 导入 monorepo PDF 为 Zotero stored attachments
+│   ├── zotero_index.py       # Zotero storage 全文索引
+│   └── tests/
+│       └── smoke_loop.py     # 闭环工具离线 smoke
 ├── start-my-day/             # 每日推荐技能
 │   ├── SKILL.md              # 技能定义文件
 │   └── scripts/
@@ -411,19 +427,16 @@ python scripts/search_arxiv.py --top-n 15
 ```
 用户输入 "start my day"
          ↓
-    1. 加载研究配置
-    2. 扫描现有笔记构建索引
+    1. Fetch 两个本地 Gitea 工作树
+    2. Reflect daily 评论并更新研究偏好
          ↓
-    3. 搜索 arXiv（最近30天）
-    4. 搜索 Semantic Scholar（过去一年高热度）
+    3. Discover：paper-query 多源检索
+    4. Ingest：写入 Zotero 并记录 Confirmed / Exploration intent
          ↓
-    5. 合并结果并去重
-    6. 综合评分并排序
-    7. 取前 N 篇
+    5. Translate：检测 PDF2zh 产物
+    6. Sync：同步 PDF / 翻译 PDF / BibTeX
          ↓
-    8. 生成今日推荐笔记
-    9. 前三篇生成详细分析
-    10. 自动链接关键词
+    7. Daily Note：生成 Obsidian 推荐笔记和评论模板
 ```
 
 ## 贡献

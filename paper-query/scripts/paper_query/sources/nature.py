@@ -11,6 +11,7 @@ from urllib.parse import urlencode, urlparse
 import urllib.request
 
 from ..models import PaperLink, PaperRecord, RetrievalEvidence, SourceProvenance
+from ..http import urlopen
 from ..pdf import classify_pdf_url, find_pdf_links
 from .base import PaperSourceAdapter, SourceCapabilities
 
@@ -194,7 +195,7 @@ def parse_nature_search_results(payload: str) -> List[PaperRecord]:
 
 def fetch_nature_article_html(article_url: str, timeout: int = 30) -> str:
     request = urllib.request.Request(article_url, headers={"User-Agent": "paper-query/1.0"})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    with urlopen(request, timeout=timeout) as response:
         return response.read().decode("utf-8", "ignore")
 
 

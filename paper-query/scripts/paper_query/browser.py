@@ -11,6 +11,8 @@ from typing import Any, Dict, Optional
 from urllib.parse import quote
 import urllib.request
 
+from .http import urlopen
+
 
 @dataclass
 class BrowserPage:
@@ -54,12 +56,12 @@ class CDPProxyBrowserClient(BrowserClient):
         self.screenshot_dir = Path(screenshot_dir) if screenshot_dir else Path(tempfile.gettempdir())
 
     def _get(self, url: str, timeout: int = 30) -> str:
-        with urllib.request.urlopen(url, timeout=timeout) as response:
+        with urlopen(url, timeout=timeout) as response:
             return response.read().decode("utf-8")
 
     def _post(self, url: str, data: str, timeout: int = 30) -> str:
         request = urllib.request.Request(url, data=data.encode("utf-8"), method="POST")
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with urlopen(request, timeout=timeout) as response:
             return response.read().decode("utf-8")
 
     def health_check(self) -> bool:
@@ -125,7 +127,7 @@ class KimiWebBridgeBrowserClient(BrowserClient):
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=60) as response:
+        with urlopen(request, timeout=60) as response:
             return json.loads(response.read().decode("utf-8"))
 
     def health_check(self) -> bool:

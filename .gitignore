@@ -2,3 +2,9 @@
 .claude/
 __pycache__/
 *.pyc
+arxiv_filtered_smoke.json
+conf_papers_smoke.json
+paper_query_*.json
+paper_query_*.txt
+paper_query_scholar_diag.png
+tools/dist/

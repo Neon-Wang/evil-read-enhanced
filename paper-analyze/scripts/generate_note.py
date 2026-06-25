@@ -26,8 +26,39 @@ def get_vault_path(cli_vault=None):
     sys.exit(1)
 
 
-def generate_note_content(paper_id, title, authors, domain, date, language="zh"):
+def build_links(source="arxiv", paper_id="", doi="", paper_url="", pdf_url=""):
+    """Build source-aware Markdown links without assuming every paper is arXiv."""
+    links = []
+    if source == "arxiv" and paper_id:
+        links.append(f"[arXiv](https://arxiv.org/abs/{paper_id})")
+        links.append(f"[PDF](https://arxiv.org/pdf/{paper_id})")
+    else:
+        if paper_url:
+            label = source.replace('_', ' ').title() if source else "Paper"
+            links.append(f"[{label}]({paper_url})")
+        if doi:
+            links.append(f"[DOI](https://doi.org/{doi})")
+        if pdf_url:
+            links.append(f"[PDF]({pdf_url})")
+    return " | ".join(links) if links else "[论文链接]"
+
+
+def generate_note_content(
+    paper_id,
+    title,
+    authors,
+    domain,
+    date,
+    language="zh",
+    source="arxiv",
+    doi="",
+    paper_url="",
+    pdf_url="",
+    venue="",
+):
     """生成笔记的 Markdown 内容"""
+    links = build_links(source=source, paper_id=paper_id, doi=doi, paper_url=paper_url, pdf_url=pdf_url)
+    venue_text = venue or ("[从categories推断]" if language == "zh" else "[Infer from categories]")
 
     # 中文模板
     if language == "zh":
@@ -61,8 +92,8 @@ status: analyzed
 - **作者**：{authors}
 - **机构**：[从作者推断或查看论文]
 - **发布时间**：{date}
-- **会议/期刊**：[从categories推断]
-- **链接**：[arXiv](https://arxiv.org/abs/{paper_id}) | [PDF](https://arxiv.org/pdf/{paper_id})
+- **会议/期刊**：{venue_text}
+- **链接**：{links}
 - **引用**：[如果可获取]
 
 ## 研究问题
@@ -228,8 +259,8 @@ status: analyzed
 - **Authors**: {authors}
 - **Affiliation**: [Infer from authors or check paper]
 - **Publication Date**: {date}
-- **Conference/Journal**: [Infer from categories]
-- **Links**: [arXiv](https://arxiv.org/abs/{paper_id}) | [PDF](https://arxiv.org/pdf/{paper_id})
+- **Conference/Journal**: {venue_text}
+- **Links**: {links}
 - **Citations**: [If available]
 
 ## Research Problem
@@ -379,6 +410,11 @@ def main():
     parser.add_argument('--domain', type=str, default='其他', help='论文领域 / Paper domain')
     parser.add_argument('--vault', type=str, default=None, help='Obsidian vault 路径 / Obsidian vault path')
     parser.add_argument('--language', type=str, default='zh', choices=['zh', 'en'], help='语言 / Language: zh (中文) or en (English)')
+    parser.add_argument('--source', type=str, default='arxiv', help='论文来源 / Paper source, e.g. arxiv, nature, doi')
+    parser.add_argument('--doi', type=str, default='', help='DOI for non-arXiv papers')
+    parser.add_argument('--paper-url', type=str, default='', help='Primary paper URL for non-arXiv papers')
+    parser.add_argument('--pdf-url', type=str, default='', help='PDF URL for non-arXiv papers')
+    parser.add_argument('--venue', type=str, default='', help='Conference or journal name')
     args = parser.parse_args()
 
     vault_root = get_vault_path(args.vault)
@@ -398,7 +434,19 @@ def main():
     os.makedirs(note_dir, exist_ok=True)
 
     note_path = os.path.join(note_dir, f"{paper_title_safe}.md")
-    content = generate_note_content(args.paper_id, args.title, args.authors, domain, date, args.language)
+    content = generate_note_content(
+        args.paper_id,
+        args.title,
+        args.authors,
+        domain,
+        date,
+        args.language,
+        source=args.source,
+        doi=args.doi,
+        paper_url=args.paper_url,
+        pdf_url=args.pdf_url,
+        venue=args.venue,
+    )
 
     try:
         with open(note_path, 'w', encoding='utf-8') as f:

@@ -9,6 +9,8 @@ from typing import List, Optional
 from urllib.parse import urljoin, urlparse
 import urllib.request
 
+from .http import urlopen
+
 PDF_HREF_RE = re.compile(r"href=[\"']([^\"']+?\.pdf(?:\?[^\"']*)?)[\"']", re.IGNORECASE)
 PDF_URL_RE = re.compile(r"https?://[^\s\"'<>]+?\.pdf(?:\?[^\s\"'<>]*)?", re.IGNORECASE)
 
@@ -49,7 +51,7 @@ def validate_pdf_url(url: str, timeout: int = 20) -> str:
         return "none"
     try:
         request = urllib.request.Request(url, method="GET", headers={"User-Agent": "paper-query/1.0"})
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with urlopen(request, timeout=timeout) as response:
             sample = response.read(8)
             content_type = response.headers.get("Content-Type", "").lower()
             if sample.startswith(b"%PDF") or "pdf" in content_type:
@@ -69,7 +71,7 @@ def download_pdf(url: str, output_dir: str, filename: Optional[str] = None, time
     target = output_path / target_name
 
     request = urllib.request.Request(url, headers={"User-Agent": "paper-query/1.0"})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    with urlopen(request, timeout=timeout) as response:
         data = response.read()
     if not data.startswith(b"%PDF"):
         raise ValueError("downloaded content is not a PDF")

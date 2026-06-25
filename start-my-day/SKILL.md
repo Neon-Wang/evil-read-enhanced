@@ -1,7 +1,111 @@
----
+﻿---
 name: start-my-day
 description: 论文阅读工作流启动 - 生成今日论文推荐笔记 / Paper reading workflow starter - Generate daily paper recommendations
 ---
+
+# 闭环 v1 入口
+
+`/start-my-day` 现在是 Zotero ↔ Obsidian ↔ Skills 闭环系统的第二阶段入口。每天首次运行时，优先执行下面的 5 阶段流程；后文旧版 arXiv 推荐流程仅作为 Discover 阶段的兼容 fallback。
+
+## 5 阶段工作流
+
+1. **Fetch**
+   - 先拉取 `evilread-workspace` monorepo，避免覆盖用户刚写入的偏好或 Zotero 镜像：
+     ```powershell
+     git -C C:/GitClient/windows/repos/evilread-workspace pull --ff-only
+     ```
+
+2. **Reflect**
+   - 解析最近一份 daily note 的 `## 我的想法（Start My Day Comments）` section。
+   - 将 `+interest:`、`-avoid:`、`!deepen:`、`?question:` 写回：
+     - `99_System/Config/research_interests.yaml`
+     - `99_System/preference_diffs/<date>.diff`
+     - `99_System/Indexes/open_questions.md`
+   - 推荐命令：
+     ```powershell
+     C:/Users/O2/Documents/GitHub/evil-read-enhanced/.venv/Scripts/python.exe `
+       C:/Users/O2/Documents/GitHub/evil-read-enhanced/tools/start_my_day_reflect.py `
+       --vault C:/GitClient/windows/repos/evilread-workspace/vault `
+       --diff-date <YYYY-MM-DD>
+     ```
+
+3. **Discover**
+   - 使用更新后的偏好调用 `paper-query`，生成两份候选：
+     - `confirmed_today.json`：用户指定或偏好种子的精读论文。
+     - `exploration_today.json`：多样化探索候选 top-N。
+   - 推荐命令形态：
+     ```powershell
+     C:/Users/O2/Documents/GitHub/evil-read-enhanced/.venv/Scripts/python.exe `
+       C:/Users/O2/Documents/GitHub/evil-read-enhanced/paper-query/scripts/run_query.py `
+       --research-config C:/GitClient/windows/repos/evilread-workspace/vault/99_System/Config/research_interests.yaml `
+       --sources arxiv,semantic_scholar,nature `
+       --top-n 5 `
+       --output exploration_today.json
+     ```
+
+4. **Ingest + Translate + Sync**
+   - 将 confirmed/exploration 候选写入 Zotero，并记录目标 collection intent：
+     - `Library/Confirmed/<YYYY-MM-DD>`
+     - `Library/Exploration/<YYYY-MM-DD>`
+   - 当前自动写入路径使用 Zotero Connector `saveItems`；Zotero local API 负责读回 metadata。
+   - Connector 不能创建 native collection，因此先写入 `evilread:collection:Library/...` 标签并在 Obsidian 镜像中记录 collection。
+   - 如需补齐 Zotero native collection，打开 Zotero Run JavaScript 窗口后运行 `tools/zotero_runjs_collections.py --confirmed-result confirmed.json --exploration-result exploration.json --date <YYYY-MM-DD> --execute`。
+   - `zotero_sync.py` 只负责把原 PDF、翻译 PDF、BibTeX 和 metadata 同步到 monorepo 的 `zotero/` 镜像；Zotero 本体附件必须再通过 `zotero_runjs_attachments.py` 导入为 stored attachments。
+   - 所有 Zotero 写入必须通过 Zotero 支持的本地接口，不直接修改 Zotero 数据目录。
+   - 推荐命令：
+     ```powershell
+     C:/Users/O2/Documents/GitHub/evil-read-enhanced/.venv/Scripts/python.exe `
+       C:/Users/O2/Documents/GitHub/evil-read-enhanced/tools/zotero_ingest.py `
+       --input confirmed_today.json `
+       --mode confirmed `
+       --vault C:/GitClient/windows/repos/evilread-workspace/vault `
+       --date <YYYY-MM-DD>
+
+     C:/Users/O2/Documents/GitHub/evil-read-enhanced/.venv/Scripts/python.exe `
+       C:/Users/O2/Documents/GitHub/evil-read-enhanced/tools/zotero_ingest.py `
+       --input exploration_today.json `
+       --mode exploration `
+       --vault C:/GitClient/windows/repos/evilread-workspace/vault `
+       --date <YYYY-MM-DD>
+
+     C:/Users/O2/Documents/GitHub/evil-read-enhanced/.venv/Scripts/python.exe `
+       C:/Users/O2/Documents/GitHub/evil-read-enhanced/tools/translate_watch.py `
+       --keys <comma-separated-zotero-keys>
+
+     C:/Users/O2/Documents/GitHub/evil-read-enhanced/.venv/Scripts/python.exe `
+       C:/Users/O2/Documents/GitHub/evil-read-enhanced/tools/zotero_sync.py `
+       --keys <comma-separated-zotero-keys> `
+       --workspace C:/GitClient/windows/repos/evilread-workspace `
+       --commit
+
+     C:/Users/O2/Documents/GitHub/evil-read-enhanced/.venv/Scripts/python.exe `
+       C:/Users/O2/Documents/GitHub/evil-read-enhanced/tools/zotero_runjs_attachments.py `
+       --items-dir C:/GitClient/windows/repos/evilread-workspace/zotero/library/items `
+       --keys <comma-separated-zotero-keys> `
+       --execute
+     ```
+
+5. **Daily Note**
+   - 使用 `C:/GitClient/windows/repos/evilread-workspace/vault/templates/daily.md` 生成当天 `10_Daily/<YYYY-MM-DD>论文推荐.md`。
+   - Daily note 必须包含 Confirmed、Exploration、Zotero 镜像条目，以及空的 `## 我的想法（Start My Day Comments）` 模板。
+   - 推荐命令：
+     ```powershell
+     C:/Users/O2/Documents/GitHub/evil-read-enhanced/.venv/Scripts/python.exe `
+       C:/Users/O2/Documents/GitHub/evil-read-enhanced/tools/start_my_day_daily.py `
+       --vault C:/GitClient/windows/repos/evilread-workspace/vault `
+       --date <YYYY-MM-DD> `
+       --confirmed-results confirmed_result.json `
+       --exploration-results exploration_result.json `
+       --workspace C:/GitClient/windows/repos/evilread-workspace
+     ```
+
+# 闭环约束
+
+- 不要在 `start-my-day` 中直接修改 `C:/Users/O2/Zotero` 数据目录；写入走 Zotero Connector/local API 支持的本地接口。
+- 不要在未 fetch 的情况下覆盖 `research_interests.yaml`；Reflect 写偏好前必须先 `pull --ff-only`。
+- 不要把 daily note 之外的内容写进 `10_Daily/`。
+- 原 PDF 和翻译 PDF 进入 `evilread-workspace/zotero`；vault 保存 Obsidian 笔记、轻量镜像、全文索引和指向 `../zotero/...` 的相对链接。
+- commit/push 只发生在 `evilread-workspace` 工作树的明确同步步骤中；不要自动提交 `evil-read-enhanced` 主仓。
 
 # Language Setting / 语言设置
 
@@ -751,3 +855,4 @@ python scripts/link_keywords.py \
 - **保护已有链接**：不替换已存在的wikilink
 - **避免代码污染**：不替换代码块和行内代码中的内容
 - **路径编码**：使用UTF-8编码确保中文路径正确
+

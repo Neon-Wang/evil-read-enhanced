@@ -6,6 +6,7 @@ import json
 from urllib.parse import urlencode
 import urllib.request
 
+from ..http import urlopen
 from ..models import PaperRecord, SourceProvenance, SourceResult
 from ..s2 import S2_API_URL, S2_FIELDS
 from .base import PaperSourceAdapter, SourceCapabilities
@@ -28,7 +29,7 @@ class SemanticScholarSource(PaperSourceAdapter):
             headers["x-api-key"] = api_key
         try:
             req = urllib.request.Request(f"{S2_API_URL}?{urlencode(params)}", headers=headers)
-            with urllib.request.urlopen(req, timeout=30) as response:
+            with urlopen(req, timeout=30) as response:
                 data = json.loads(response.read().decode("utf-8"))
         except Exception as exc:
             return SourceResult(source=self.source_name, errors=[str(exc)])
