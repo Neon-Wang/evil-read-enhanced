@@ -7,6 +7,40 @@ description: 论文阅读工作流启动 - 生成今日论文推荐笔记 / Pape
 
 `/start-my-day` 现在是 Zotero ↔ Obsidian ↔ Skills 闭环系统的第二阶段入口。每天首次运行时，优先执行下面的 5 阶段流程；后文旧版 arXiv 推荐流程仅作为 Discover 阶段的兼容 fallback。
 
+## v1.6 全闭环一键入口
+
+当前推荐入口是 orchestrator，一次完成 Collections -> Zotero -> workspace mirror -> Research notes -> Markdown daily report -> CAT email：
+
+```powershell
+C:/Users/O2/Documents/GitHub/evil-read-enhanced/.venv/Scripts/python.exe `
+  C:/Users/O2/Documents/GitHub/evil-read-enhanced/tools/start_my_day_orchestrator.py `
+  --workspace C:/GitClient/windows/repos/evilread-workspace `
+  --date <YYYY-MM-DD> `
+  --send-email
+```
+
+Windows Task Scheduler 入口：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:/Users/O2/Documents/GitHub/evil-read-enhanced/scripts/run-start-my-day.ps1"
+```
+
+该 wrapper 默认使用 `C:/GitClient/windows/repos/evilread-workspace` 和当天日期，默认发送邮件；调试时可加 `-NoSendEmail -SkipGit -SkipZoteroImport`，避免发邮件、提交或导入 Zotero。邮件环境变量只做 presence 检查，不打印值。
+
+关键约束：
+
+- 只扫描 `evilread-workspace/collections/*.pdf`，不递归扫描 `imported/`、`fails/`、`logs/` 或子目录。
+- 成功导入的 PDF 移到 `collections/imported/<YYYY-MM-DD>/`，失败文件移到 `collections/fails/<YYYY-MM-DD>/`。
+- Zotero RunJS 返回 `pending-verification` / `pending` / `skipped` 时不移动 PDF，记录为 skipped/pending，等待下次补跑或人工确认。
+- 生成 `zotero/INDEX.md`，并补齐 `vault/20_Research/Papers/**.md` 的全文级 Research note。
+- 日报文件是 `vault/10_Daily/<YYYY-MM-DD>论文日报.md`。
+- 日报内容使用 humanizer 风格：更像一个人在安排阅读，少套话、少空泛大词；`20_Research` 仍保持严肃研究笔记。
+- 邮件正文必须是该 Markdown 日报原文件原内容。
+- `tools/cat_email.py` 使用仓库内自包含 `tools/cat_mailer.py`，不依赖外部 `C:/Users/O2/Documents/GitHub/CAT` 仓库。
+- CAT/cf_relay credentials 只从环境变量读取，不写入代码、workspace 或日志。
+- Zotero local API 不可用时，orchestrator 会尝试启动 Zotero 并轮询；仍失败时生成降级日报、发送邮件，并在 comments 中写入 `pending:`，下次 Start My Day 继续补。
+- `git pull --rebase` 冲突或 `git push` 失败时任务失败并禁止发送日报或失败通知邮件，避免在 workspace 同步状态不确定时发出误导性日报。
+
 ## 5 阶段工作流
 
 1. **Fetch**
@@ -84,10 +118,20 @@ description: 论文阅读工作流启动 - 生成今日论文推荐笔记 / Pape
        --keys <comma-separated-zotero-keys> `
        --execute
      ```
+   - Daily note 生成前必须做一次 Zotero 本体到 workspace 镜像的全量同步，避免 code-server/Obsidian 里看到的 `evilread-workspace/zotero` 落后于本机 Zotero。`tools/start_my_day_daily.py --workspace ...` 会自动执行该同步；需要单独补跑或排障时使用：
+     ```powershell
+     C:/Users/O2/Documents/GitHub/evil-read-enhanced/.venv/Scripts/python.exe `
+       C:/Users/O2/Documents/GitHub/evil-read-enhanced/tools/zotero_sync.py `
+       --all `
+       --workspace C:/GitClient/windows/repos/evilread-workspace
+     ```
+   - `--all` 通过 Zotero local API 枚举顶层父条目，不直接读取或修改 `zotero.sqlite`。如果 Zotero local API 不可用，先启动 Zotero 再重跑。
 
 5. **Daily Note**
    - 使用 `C:/GitClient/windows/repos/evilread-workspace/vault/templates/daily.md` 生成当天 `10_Daily/<YYYY-MM-DD>论文推荐.md`。
-   - Daily note 必须包含 Confirmed、Exploration、Zotero 镜像条目，以及空的 `## 我的想法（Start My Day Comments）` 模板。
+   - Daily note 必须包含 Confirmed、Exploration、Zotero 镜像条目、相对 PDF 链接、`## 今日概览`、`## 今日阅读建议`、每篇论文的 insight block，以及空的 `## 我的想法（Start My Day Comments）` 模板。
+   - insight block 至少包含：`一句话总结`、`为什么值得看`、`核心贡献/观察`、`下一步动作`。
+   - 默认使用标题、摘要、mirror note、PDF 可用性做规则版分析；如果配置了 OpenAI-compatible LLM 环境变量，则使用 LLM 增强总结，失败时自动回退规则版。
    - 推荐命令：
      ```powershell
      C:/Users/O2/Documents/GitHub/evil-read-enhanced/.venv/Scripts/python.exe `
@@ -98,6 +142,12 @@ description: 论文阅读工作流启动 - 生成今日论文推荐笔记 / Pape
        --exploration-results exploration_result.json `
        --workspace C:/GitClient/windows/repos/evilread-workspace
      ```
+   - 可选 LLM 环境变量：
+     ```powershell
+     $env:EVILREAD_LLM_BASE_URL = "https://api.jiashengfan.space"
+     $env:EVILREAD_LLM_MODEL = "gpt-5.5"
+     $env:EVILREAD_LLM_API_KEY = "<set locally; never commit>"
+     ```
 
 # 闭环约束
 
@@ -106,6 +156,7 @@ description: 论文阅读工作流启动 - 生成今日论文推荐笔记 / Pape
 - 不要把 daily note 之外的内容写进 `10_Daily/`。
 - 原 PDF 和翻译 PDF 进入 `evilread-workspace/zotero`；vault 保存 Obsidian 笔记、轻量镜像、全文索引和指向 `../zotero/...` 的相对链接。
 - commit/push 只发生在 `evilread-workspace` 工作树的明确同步步骤中；不要自动提交 `evil-read-enhanced` 主仓。
+- 不要把 LLM API key 写入仓库、daily note、脚本参数或日志；只通过本机环境变量传入。
 
 # Language Setting / 语言设置
 

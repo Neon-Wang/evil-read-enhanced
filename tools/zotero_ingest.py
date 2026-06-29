@@ -160,6 +160,14 @@ class ConnectorZoteroClient:
             "date": record.get("published_date") or str(record.get("year", "")),
             "tags": tags,
         }
+        if record.get("pdf_url"):
+            item["attachments"] = [
+                {
+                    "title": "EvilRead PDF",
+                    "url": record.get("pdf_url"),
+                    "mimeType": "application/pdf",
+                }
+            ]
         payload = {
             "sessionID": f"evilread-{uuid4().hex}",
             "uri": item["url"] or "https://local.evilread/connector-ingest",

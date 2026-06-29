@@ -12,18 +12,30 @@ from typing import Any
 
 import yaml
 
-COMMENT_HEADING = "## 我的想法"
+COMMENT_HEADINGS = (
+    "## 我的想法",
+    "## Start My Day Comments",
+    "## 鎴戠殑鎯虫硶",
+    "## 閹存垹娈戦幆铏《",
+)
+
+
+def looks_like_question(value: str) -> bool:
+    return value.endswith(("?", "？")) or any(
+        token in value
+        for token in ("什么", "如何", "为什么", "怎么", "是否", "吗", "哪", "浠€涔?", "濡備綍", "涓轰粈涔?", "鎬庝箞", "鏄惁", "鍚?")
+    )
 
 
 def parse_comment_lines(note_text: str) -> dict[str, list[str]]:
-    parsed = {"interests": [], "avoids": [], "deepen": [], "questions": []}
+    parsed = {"interests": [], "avoids": [], "deepen": [], "questions": [], "requests": [], "pending": []}
     in_section = False
     for raw_line in note_text.splitlines():
         line = raw_line.strip()
         if line.startswith("## "):
             if in_section:
                 break
-            in_section = line.startswith(COMMENT_HEADING)
+            in_section = any(line.startswith(heading) for heading in COMMENT_HEADINGS)
             continue
         if not in_section:
             continue
@@ -44,6 +56,18 @@ def parse_comment_lines(note_text: str) -> dict[str, list[str]]:
             value = cleaned.split(":", 1)[1].strip()
             if value:
                 parsed["questions"].append(value)
+        elif cleaned.startswith("pending:"):
+            value = cleaned.split(":", 1)[1].strip()
+            if value:
+                parsed["pending"].append(value)
+                parsed["requests"].append(f"pending: {value}")
+        elif cleaned and cleaned not in {"-", "--"}:
+            if cleaned.startswith(("请", "帮", "麻烦", "检查", "同步", "导入", "璇?", "甯?", "楹荤儲", "妫€鏌?", "鍚屾", "瀵煎叆")):
+                parsed["requests"].append(cleaned)
+            elif looks_like_question(cleaned):
+                parsed["questions"].append(cleaned)
+            else:
+                parsed["requests"].append(cleaned)
     return parsed
 
 
@@ -101,12 +125,7 @@ def append_to_yaml_sequence(lines: list[str], key: str, additions: list[str], it
 def update_research_domains_text(config_path: Path, comments: dict[str, list[str]]) -> dict[str, list[str]]:
     lines = config_path.read_text(encoding="utf-8").splitlines()
     updated_lines, keyword_additions = append_to_yaml_sequence(lines, "keywords", comments["interests"], "      ")
-    updated_lines, excluded_additions = append_to_yaml_sequence(
-        updated_lines,
-        "excluded_keywords",
-        comments["avoids"],
-        "  ",
-    )
+    updated_lines, excluded_additions = append_to_yaml_sequence(updated_lines, "excluded_keywords", comments["avoids"], "  ")
     config_path.write_text("\n".join(updated_lines).rstrip() + "\n", encoding="utf-8")
     return {"keywords": keyword_additions, "excluded_keywords": excluded_additions}
 
@@ -116,22 +135,15 @@ def update_research_config(config_path: Path, comments: dict[str, list[str]]) ->
     config = yaml.safe_load(raw_text) or {}
     if isinstance(config.get("research_domains"), dict):
         return update_research_domains_text(config_path, comments)
-    else:
-        domains = config.setdefault("domains", [])
-        if not domains:
-            domains.append({"name": "General", "keywords": [], "excluded_keywords": []})
-        primary_domain = domains[0]
-        if not isinstance(primary_domain, dict):
-            raise ValueError("first domain in research config must be a mapping")
-        keyword_additions = append_unique(ensure_list(primary_domain, "keywords"), comments["interests"])
-        excluded_additions = append_unique(
-            ensure_list(primary_domain, "excluded_keywords"),
-            comments["avoids"],
-        )
-    config_path.write_text(
-        yaml.safe_dump(config, allow_unicode=True, sort_keys=False),
-        encoding="utf-8",
-    )
+    domains = config.setdefault("domains", [])
+    if not domains:
+        domains.append({"name": "General", "keywords": [], "excluded_keywords": []})
+    primary_domain = domains[0]
+    if not isinstance(primary_domain, dict):
+        raise ValueError("first domain in research config must be a mapping")
+    keyword_additions = append_unique(ensure_list(primary_domain, "keywords"), comments["interests"])
+    excluded_additions = append_unique(ensure_list(primary_domain, "excluded_keywords"), comments["avoids"])
+    config_path.write_text(yaml.safe_dump(config, allow_unicode=True, sort_keys=False), encoding="utf-8")
     return {"keywords": keyword_additions, "excluded_keywords": excluded_additions}
 
 
@@ -148,6 +160,10 @@ def write_preference_diff(vault_root: Path, diff_date: str, comments: dict[str, 
         lines.append(f"!deepen: {deepen}")
     for question in comments["questions"]:
         lines.append(f"?question: {question}")
+    for request in comments.get("requests", []):
+        lines.append(f"request: {request}")
+    for pending in comments.get("pending", []):
+        lines.append(f"pending: {pending}")
     diff_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
     return diff_path
 
