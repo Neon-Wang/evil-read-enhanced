@@ -110,6 +110,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 self.wfile.write(payload)
                 self.wfile.flush()
             self.close_connection = True
+            try:
+                self.connection.unwrap()
+            except OSError:
+                pass
         finally:
             conn.close()
 

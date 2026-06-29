@@ -31,7 +31,8 @@ Do not assume Cloudflare Access on `git.jiashengfan.space`. Git client-to-server
 - local smoke tests use `https://127.0.0.1:18083/o2/evilread-workspace.git`
 - production remotes use `https://git.jiashengfan.space/o2/evilread-workspace.git`
 - credentials are passed to Git with an in-memory Basic Auth header from the encrypted envelope
-- local HTTPS verification uses the generated CA/cert path from `git_ca_cert`
+- local loopback tests use TLS encryption with the generated self-signed relay cert and skip CA verification only for `-UseLocalRelay`
+- production `git.jiashengfan.space` should use a normal trusted HTTPS certificate
 - never put tokens into remote URLs, notes, logs, screenshots, or committed files
 
 ## Credential Rule

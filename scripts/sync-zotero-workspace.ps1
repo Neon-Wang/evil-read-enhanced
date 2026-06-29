@@ -61,7 +61,10 @@ if (-not $GitCaCert -and $creds -and $creds.PSObject.Properties.Name -contains "
 }
 
 $gitConfig = @()
-if ($GitCaCert) {
+if ($UseLocalRelay) {
+    $gitConfig += @("-c", "http.sslBackend=schannel")
+    $gitConfig += @("-c", "http.sslVerify=false")
+} elseif ($GitCaCert) {
     $caCandidate = $GitCaCert
     if (-not [System.IO.Path]::IsPathRooted($caCandidate)) {
         $caCandidate = Join-Path (Get-RepoRoot) $caCandidate
@@ -85,10 +88,14 @@ if (-not (Test-Path -LiteralPath $workspaceParent)) {
 }
 
 if (-not (Test-Path -LiteralPath (Join-Path $Workspace ".git"))) {
-    git @gitConfig clone $Remote $Workspace
+    New-Item -ItemType Directory -Force -Path $Workspace | Out-Null
+    & git @gitConfig -C $Workspace init
     if ($LASTEXITCODE -ne 0) {
-        throw "git clone failed: $Remote -> $Workspace"
+        throw "git init failed: $Workspace"
     }
+    Invoke-Git -Cwd $Workspace -GitArgs @("remote", "add", "origin", $Remote) -GitConfig $gitConfig
+    Invoke-Git -Cwd $Workspace -GitArgs @("fetch", "origin", "main") -GitConfig $gitConfig
+    Invoke-Git -Cwd $Workspace -GitArgs @("checkout", "-B", "main", "FETCH_HEAD") -GitConfig $gitConfig
 }
 
 Invoke-Git -Cwd $Workspace -GitArgs @("remote", "set-url", "origin", $Remote) -GitConfig $gitConfig

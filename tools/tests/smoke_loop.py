@@ -2422,6 +2422,8 @@ def test_zotero_relay_skill_and_sync_script_contract() -> None:
     assert "Do not assume Cloudflare Access" in skill_text
     assert "[switch]$UseLocalRelay" in sync_script
     assert "http.extraHeader=Authorization: Basic" in sync_script
+    assert "http.sslBackend=schannel" in sync_script
+    assert "http.sslVerify=false" in sync_script
     assert "http.sslBackend=openssl" in sync_script
     assert "http.sslCAInfo" in sync_script
     assert "Start-Process -WindowStyle Hidden" in start_script
