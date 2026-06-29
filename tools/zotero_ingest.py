@@ -8,6 +8,7 @@ from datetime import date
 import json
 import os
 from pathlib import Path
+import re
 from typing import Any, Protocol
 from uuid import uuid4
 import urllib.error
@@ -139,6 +140,9 @@ class ConnectorZoteroClient:
         title = str(record.get("title") or "Untitled").strip()
         if not title:
             raise ValueError("record title is required")
+        existing_key = self._find_existing_item_key(title=title, doi=str(record.get("doi") or ""))
+        if existing_key:
+            return existing_key
         connector_item_id = f"evilread-{uuid4().hex}"
         tags = [
             {"tag": f"source:{record.get('source', 'unknown')}"},
@@ -181,6 +185,36 @@ class ConnectorZoteroClient:
         )
         return self._find_recent_item_key(title=title, doi=str(record.get("doi") or ""))
 
+    def _find_existing_item_key(self, title: str, doi: str) -> str:
+        wanted_title = normalized_title(title)
+        wanted_doi = doi.strip().lower()
+        start = 0
+        limit = 100
+        while start < 500:
+            query = urllib.parse.urlencode({"sort": "dateModified", "direction": "desc", "limit": str(limit), "start": str(start)})
+            items = self._request_json(f"{self.api_url}/items?{query}")
+            if not isinstance(items, list):
+                return ""
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                data = item.get("data", {})
+                if not isinstance(data, dict):
+                    continue
+                if data.get("itemType") == "attachment" or data.get("parentItem"):
+                    continue
+                item_key = str(item.get("key") or data.get("key") or "").strip()
+                item_doi = str(data.get("DOI") or "").strip().lower()
+                item_title = normalized_title(str(data.get("title") or ""))
+                if item_key and wanted_doi and item_doi == wanted_doi:
+                    return item_key
+                if item_key and wanted_title and item_title == wanted_title:
+                    return item_key
+            if len(items) < limit:
+                break
+            start += limit
+        return ""
+
     def attach_pdf(self, item_key: str, record: dict[str, Any]) -> bool:
         return bool(record.get("pdf_local_path"))
 
@@ -216,6 +250,10 @@ class ConnectorZoteroClient:
             else:
                 creators.append({"creatorType": "author", "name": name})
         return creators
+
+
+def normalized_title(value: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"[^\w\u4e00-\u9fff]+", " ", value.lower())).strip()
 
 
 def load_records(input_path: Path) -> list[dict[str, Any]]:

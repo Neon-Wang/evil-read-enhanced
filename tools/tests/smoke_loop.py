@@ -28,8 +28,12 @@ import start_my_day_orchestrator
 import zotero_markdown_index
 import zotero_runjs_attachments
 import zotero_runjs_collections
+import zotero_closure_audit
+import zotero_runjs_dedupe
 import zotero_ingest
 import zotero_sync
+import relay_credentials
+import git_tls_relay
 
 
 def test_safety_scan_rejects_secret_text() -> None:
@@ -86,6 +90,22 @@ def test_reflect_updates_preferences_and_writes_diff() -> None:
             daily_note=daily_note,
             vault_root=vault_root,
             diff_date="2026-06-26",
+            preference_updates={
+                "interests": [
+                    {
+                        "keyword": "event-driven neural computation",
+                        "domain": "Brain-Inspired AI",
+                        "rationale": "User's spiking-network note maps to the broader SNN computation thread.",
+                    }
+                ],
+                "avoids": [
+                    {
+                        "keyword": "clinical medical imaging",
+                        "rationale": "User wants to avoid medical imaging papers, especially clinical imaging.",
+                    }
+                ],
+            },
+            require_agent_analysis=True,
         )
 
         updated_config = config_path.read_text(encoding="utf-8")
@@ -93,11 +113,54 @@ def test_reflect_updates_preferences_and_writes_diff() -> None:
         questions_text = (vault_root / "99_System" / "Indexes" / "open_questions.md").read_text(encoding="utf-8")
 
     assert summary["interests"] == ["spiking networks"]
-    assert "spiking networks" in updated_config
-    assert "medical imaging" in updated_config
+    assert "event-driven neural computation" in updated_config
+    assert "clinical medical imaging" in updated_config
+    assert "spiking networks" not in updated_config
+    assert '- medical imaging' not in updated_config
+    assert '- "medical imaging"' not in updated_config
+    assert summary["preference_updates"]["interests"] == ["event-driven neural computation"]
     assert "random matrix theory" in summary["deepen"]
     assert "+interest: spiking networks" in diff_text
     assert "how does noise shape calibration?" in questions_text
+
+
+def test_reflect_blocks_raw_interest_config_without_agent_analysis() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        vault_root = Path(temp_dir)
+        config_dir = vault_root / "99_System" / "Config"
+        config_dir.mkdir(parents=True)
+        (vault_root / "10_Daily").mkdir()
+        config_path = config_dir / "research_interests.yaml"
+        original_config = "domains:\n  - name: General\n    keywords: []\n    excluded_keywords: []\n"
+        config_path.write_text(original_config, encoding="utf-8")
+        daily_note = vault_root / "10_Daily" / "2026-06-25论文推荐.md"
+        daily_note.write_text(
+            "\n".join(
+                [
+                    "## Start My Day Comments",
+                    "- +interest: I want more papers about SNNs but mainly when they help calibration, not random neuromorphic hype.",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        try:
+            start_my_day_reflect.reflect_daily_note(
+                daily_note=daily_note,
+                vault_root=vault_root,
+                diff_date="2026-06-26",
+                require_agent_analysis=True,
+            )
+        except start_my_day_reflect.PreferenceAnalysisError as exc:
+            error = str(exc)
+        else:
+            raise AssertionError("raw preference comments must require agent analysis before config update")
+
+        updated_config = config_path.read_text(encoding="utf-8")
+
+    assert "agent-analyzed preference updates" in error
+    assert updated_config == original_config
+    assert "SNNs but mainly" not in updated_config
 
 
 class FailingAttachmentClient:
@@ -175,6 +238,42 @@ def test_zotero_ingest_mirror_uses_monorepo_relative_artifact_links() -> None:
     assert "[ITEMKEY.zh.pdf](../../../../zotero/library/items/ITEMKEY.zh.pdf)" in mirror_text
 
 
+def test_connector_ingest_reuses_existing_item_before_saveitems() -> None:
+    client = zotero_ingest.ConnectorZoteroClient()
+    calls: list[tuple[str, str]] = []
+
+    def fake_request(url: str, method: str = "GET", payload: object | None = None, headers: dict[str, str] | None = None) -> object:
+        calls.append((method, url))
+        if "/items?" in url:
+            return [
+                {
+                    "key": "EXIST123",
+                    "data": {
+                        "key": "EXIST123",
+                        "itemType": "journalArticle",
+                        "title": "A Stable Paper",
+                        "DOI": "10.1234/stable",
+                    },
+                }
+            ]
+        raise AssertionError(f"unexpected Zotero write: {method} {url}")
+
+    client._request_json = fake_request  # type: ignore[method-assign]
+
+    key = client.create_journal_article(
+        {
+            "title": "A Stable Paper",
+            "doi": "10.1234/stable",
+            "authors": ["A Researcher"],
+            "source": "arxiv",
+        },
+        "Library/Confirmed/2026-06-27",
+    )
+
+    assert key == "EXIST123"
+    assert not any("/connector/saveItems" in url for _, url in calls)
+
+
 def test_zotero_runjs_collection_script_is_idempotent_and_reports_missing() -> None:
     script = zotero_runjs_collections.build_collection_script(
         confirmed_keys=["CONF1234"],
@@ -187,6 +286,26 @@ def test_zotero_runjs_collection_script_is_idempotent_and_reports_missing() -> N
     assert 'const runDate = "2026-06-25";' in script
     assert "if (!collections.includes(collection.id))" in script
     assert "confirmedMissing" in script
+
+
+def test_collections_import_script_reuses_existing_sha_item() -> None:
+    script = collections_import.build_import_script(
+        [
+            {
+                "path": "C:/repo/collections/paper.pdf",
+                "name": "paper.pdf",
+                "sha256": "abc123",
+            }
+        ],
+        run_date="2026-06-27",
+    )
+
+    assert "evilread:sha256:" in script
+    assert "findExistingBySha" in script
+    assert "status: \"existing\"" in script
+    assert "parentKey: existing.key" in script
+    assert 'ensureChild("Collections", false)' in script
+    assert 'ensureChild("2026-06-27", collectionsRoot.id)' in script
 
 
 def test_zotero_runjs_attachment_script_imports_stored_pdfs() -> None:
@@ -2007,6 +2126,125 @@ def test_orchestrator_blocks_daily_email_when_agent_decisions_are_missing() -> N
     assert sent == {}
 
 
+def test_orchestrator_uses_agent_analyzed_preferences_for_reflection() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        workspace_root = Path(temp_dir)
+        vault_root = workspace_root / "vault"
+        (vault_root / "10_Daily").mkdir(parents=True)
+        (vault_root / "99_System" / "Config").mkdir(parents=True)
+        config_path = vault_root / "99_System" / "Config" / "research_interests.yaml"
+        config_path.write_text(
+            "domains:\n  - name: General\n    keywords: []\n    excluded_keywords: []\n",
+            encoding="utf-8",
+        )
+        previous_note = vault_root / "10_Daily" / "2026-06-26论文日报.md"
+        previous_note.write_text(
+            "\n".join(
+                [
+                    "# 2026-06-26",
+                    "",
+                    "## Start My Day Comments",
+                    "- +interest: I want more SNN papers only when they help calibration, not broad neuromorphic hype.",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        decisions_path = workspace_root / "agent-decisions.json"
+        decisions_path.write_text(
+            json.dumps(
+                {
+                    "overview": "agent overview",
+                    "reading_suggestions": ["agent suggestion"],
+                    "preference_updates": {
+                        "interests": [
+                            {
+                                "keyword": "spiking neural calibration",
+                                "domain": "Brain-Inspired AI",
+                                "rationale": "Condenses the user's raw SNN calibration preference.",
+                            }
+                        ]
+                    },
+                    "papers": {},
+                    "research_notes": {},
+                    "comment_answers": {},
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+
+        with patch("start_my_day_orchestrator.preflight_email_env"), \
+            patch("start_my_day_orchestrator.ensure_zotero_available", return_value={"status": "unavailable", "error": "test outage"}), \
+            patch("start_my_day_orchestrator.discover_papers", return_value={"result": {}, "papers": [], "confirmed_records": [], "exploration_records": [], "artifact": "offline.json"}), \
+            patch("start_my_day_orchestrator.prepare_workspace_git", return_value=""), \
+            patch("start_my_day_orchestrator.workspace_has_changes", return_value=False), \
+            patch("start_my_day_orchestrator.cat_email.send_daily_markdown", return_value={"status": "sent"}):
+            result = start_my_day_orchestrator.run_loop(
+                workspace_root=workspace_root,
+                run_date="2026-06-27",
+                send_email=False,
+                skip_git=False,
+                agent_decisions_path=decisions_path,
+            )
+
+        updated_config = config_path.read_text(encoding="utf-8")
+        diff_text = (vault_root / "99_System" / "preference_diffs" / "2026-06-27.diff").read_text(encoding="utf-8")
+
+    assert "spiking neural calibration" in updated_config
+    assert "I want more SNN papers" not in updated_config
+    assert "I want more SNN papers" in diff_text
+    assert result["reflection"]["preference_updates"]["interests"] == ["spiking neural calibration"]
+
+
+def test_orchestrator_reconciles_zotero_collections_and_attachments() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        workspace_root = Path(temp_dir)
+        vault_root = workspace_root / "vault"
+        item_dir = workspace_root / "zotero" / "library" / "items"
+        (vault_root / "10_Daily").mkdir(parents=True)
+        (vault_root / "99_System" / "Config").mkdir(parents=True)
+        item_dir.mkdir(parents=True)
+        (vault_root / "99_System" / "Config" / "research_interests.yaml").write_text(
+            "domains:\n  - name: General\n    keywords: []\n    excluded_keywords: []\n",
+            encoding="utf-8",
+        )
+        decisions_path = workspace_root / "agent-decisions.json"
+        decisions_path.write_text(
+            json.dumps({"overview": "agent overview", "reading_suggestions": ["agent suggestion"], "papers": {}, "research_notes": {}, "comment_answers": {}}),
+            encoding="utf-8",
+        )
+        reconciled: list[dict[str, object]] = []
+
+        with patch("start_my_day_orchestrator.preflight_email_env"), \
+            patch("start_my_day_orchestrator.ensure_zotero_available", return_value={"status": "available"}), \
+            patch("start_my_day_orchestrator.collections_import.import_collection_pdfs", return_value={"imported": [], "failed": [], "skipped": [], "pending": []}), \
+            patch("start_my_day_orchestrator.discover_papers", return_value={"result": {}, "papers": [], "confirmed_records": [], "exploration_records": [], "artifact": "offline.json"}), \
+            patch("start_my_day_orchestrator.ingest_discovered_papers", side_effect=[
+                [{"title": "Confirmed Paper", "zotero_key": "CONF123", "collection": "Library/Confirmed/2026-06-27", "status": "ok"}],
+                [{"title": "Exploration Paper", "zotero_key": "EXPL123", "collection": "Library/Exploration/2026-06-27", "status": "ok"}],
+            ]), \
+            patch("start_my_day_orchestrator.start_my_day_daily.sync_zotero_mirror", return_value={"copied": [], "missing": []}), \
+            patch("start_my_day_orchestrator.zotero_markdown_index.write_zotero_index", return_value=workspace_root / "zotero" / "INDEX.md"), \
+            patch("start_my_day_orchestrator.research_index.update_research_notes", return_value={"updated": [], "incomplete": []}), \
+            patch("start_my_day_orchestrator.reconcile_zotero_native", side_effect=lambda **kwargs: reconciled.append(kwargs) or {"status": "ok"}), \
+            patch("start_my_day_orchestrator.prepare_workspace_git", return_value=""), \
+            patch("start_my_day_orchestrator.workspace_has_changes", return_value=False), \
+            patch("start_my_day_orchestrator.cat_email.send_daily_markdown", return_value={"status": "sent"}):
+            result = start_my_day_orchestrator.run_loop(
+                workspace_root=workspace_root,
+                run_date="2026-06-27",
+                send_email=False,
+                skip_git=False,
+                agent_decisions_path=decisions_path,
+            )
+
+    assert reconciled
+    assert reconciled[0]["confirmed_keys"] == ["CONF123"]
+    assert reconciled[0]["exploration_keys"] == ["EXPL123"]
+    assert result["zotero_native"]["status"] == "ok"
+
+
 def test_daily_report_humanizes_daily_sections_without_changing_research_notes() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         workspace_root = Path(temp_dir)
@@ -2113,6 +2351,80 @@ def test_task_scheduler_start_my_day_wrapper_contract() -> None:
     assert "CAT_CF_RELAY_SECRET" in script_text
     assert "CAT_RESEND_API_KEY" in script_text
     assert "CAT_SMTP_PASSWORD" in script_text
+    assert "EVILREAD_RELAY_CREDENTIALS" in script_text
+    assert "sync-zotero-workspace.ps1" in script_text
+    assert "-BeforeStartMyDay" in script_text
+    assert "-AfterStartMyDay" in script_text
+
+
+def test_relay_credentials_encrypt_decrypt_and_redact_secret_fields() -> None:
+    payload = {
+        "workspace_remote": "https://git.jiashengfan.space/o2/evilread-workspace.git",
+        "local_test_remote": "https://127.0.0.1:18083/o2/evilread-workspace.git",
+        "git_username": "tester",
+        "git_token": "secret-token-value",
+    }
+
+    envelope = relay_credentials.encrypt_payload(payload, "test-passphrase", iterations=1000)
+    decrypted = relay_credentials.decrypt_payload(envelope, "test-passphrase")
+    redacted = relay_credentials.redacted(decrypted)
+
+    assert envelope["cipher"] == "aes-256-gcm"
+    assert "secret-token-value" not in json.dumps(envelope)
+    assert decrypted == payload
+    assert redacted["git_token"] == "***-value"
+    assert redacted["git_username"] == "tester"
+
+
+def test_relay_credentials_cli_accepts_windows_utf8_bom_input() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        plain_path = Path(temp_dir) / "credentials.local.json"
+        enc_path = Path(temp_dir) / "credentials.enc.json"
+        plain_path.write_text(
+            json.dumps({"git_username": "tester", "git_token": "secret-token-value"}),
+            encoding="utf-8-sig",
+        )
+        passphrase = "test-passphrase"
+
+        payload = json.loads(plain_path.read_text(encoding="utf-8-sig"))
+        envelope = relay_credentials.encrypt_payload(payload, passphrase, iterations=1000)
+        enc_path.write_text(json.dumps(envelope), encoding="utf-8-sig")
+        decrypted = relay_credentials.decrypt_payload(
+            json.loads(enc_path.read_text(encoding="utf-8-sig")),
+            passphrase,
+        )
+
+    assert decrypted["git_username"] == "tester"
+    assert decrypted["git_token"] == "secret-token-value"
+
+
+def test_git_tls_relay_generates_local_certificate_pair() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        cert_path = Path(temp_dir) / "git-relay.local.crt"
+        key_path = Path(temp_dir) / "git-relay.local.key"
+
+        git_tls_relay.generate_self_signed_cert(cert_path, key_path)
+
+        cert_text = cert_path.read_text(encoding="utf-8")
+        key_text = key_path.read_text(encoding="utf-8")
+
+    assert "BEGIN CERTIFICATE" in cert_text
+    assert "BEGIN RSA PRIVATE KEY" in key_text
+
+
+def test_zotero_relay_skill_and_sync_script_contract() -> None:
+    skill_text = (REPO_ROOT / "zotero-relay" / "SKILL.md").read_text(encoding="utf-8")
+    sync_script = (REPO_ROOT / "scripts" / "sync-zotero-workspace.ps1").read_text(encoding="utf-8")
+    start_script = (REPO_ROOT / "scripts" / "start-git-tls-relay.ps1").read_text(encoding="utf-8")
+
+    assert "https://127.0.0.1:18083/o2/evilread-workspace.git" in skill_text
+    assert "https://git.jiashengfan.space/o2/evilread-workspace.git" in skill_text
+    assert "Do not assume Cloudflare Access" in skill_text
+    assert "[switch]$UseLocalRelay" in sync_script
+    assert "http.extraHeader=Authorization: Basic" in sync_script
+    assert "http.sslBackend=openssl" in sync_script
+    assert "http.sslCAInfo" in sync_script
+    assert "Start-Process -WindowStyle Hidden" in start_script
 
 
 def test_zotero_sync_writes_metadata_and_fallback_bibtex() -> None:
@@ -2308,20 +2620,125 @@ def test_zotero_sync_copies_parent_child_attachment_pdfs() -> None:
             translated_dir=root / "translated",
             child_attachment_keys=["RAWATT", "ZHATT"],
         )
+        raw_exists = (zotero_repo / "library" / "items" / "PARENT.pdf").exists()
+        translated_exists = (zotero_repo / "library" / "items" / "PARENT.zh.pdf").exists()
 
-        assert raw_source == storage / "RAWATT" / "Paper.pdf"
-        assert zh_source == storage / "ZHATT" / "Paper.zh.pdf"
-        assert (zotero_repo / "library" / "items" / "PARENT.pdf").exists()
-        assert (zotero_repo / "library" / "items" / "PARENT.zh.pdf").exists()
+    assert raw_source == storage / "RAWATT" / "Paper.pdf"
+    assert zh_source == storage / "ZHATT" / "Paper.zh.pdf"
+    assert raw_exists
+    assert translated_exists
+
+
+def test_zotero_closure_audit_reports_duplicates_and_missing_attachments() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        items_dir = Path(temp_dir)
+        (items_dir / "PARENT1.json").write_text("{}", encoding="utf-8")
+        (items_dir / "PARENT1.pdf").write_bytes(b"%PDF-1.4\nraw\n")
+        (items_dir / "PARENT1.zh.pdf").write_bytes(b"%PDF-1.4\nzh\n")
+        (items_dir / "MIRRORONLY.json").write_text("{}", encoding="utf-8")
+        items = [
+            {
+                "key": "PARENT1",
+                "data": {
+                    "key": "PARENT1",
+                    "itemType": "journalArticle",
+                    "title": "Repeated Paper",
+                },
+            },
+            {
+                "key": "PARENT2",
+                "data": {
+                    "key": "PARENT2",
+                    "itemType": "journalArticle",
+                    "title": "Repeated   Paper",
+                },
+            },
+            {
+                "key": "RAWATT",
+                "data": {
+                    "key": "RAWATT",
+                    "itemType": "attachment",
+                    "parentItem": "PARENT1",
+                    "title": "EvilRead Original PDF",
+                },
+            },
+        ]
+        collections = [
+            {"key": "ROOT", "data": {"key": "ROOT", "name": "Confirmed"}},
+            {
+                "key": "DATE",
+                "data": {"key": "DATE", "name": "2026-06-25", "parentCollection": "ROOT"},
+            },
+        ]
+
+        result = zotero_closure_audit.audit(items, collections, items_dir)
+
+    assert result["zotero_parent_items"] == 2
+    assert result["mirror_json_not_in_zotero_parent"] == ["MIRRORONLY"]
+    assert result["zotero_parent_missing_mirror_json"] == ["PARENT2"]
+    assert result["missing_original_attachment_for_mirrored_pdf"] == []
+    assert result["missing_translated_attachment_for_mirrored_pdf"] == ["PARENT1"]
+    assert ["PARENT1", "PARENT2"] in result["duplicate_title_groups"].values()
+    assert result["dated_collections"] == ["Confirmed/2026-06-25"]
+
+
+def test_zotero_runjs_dedupe_plans_canonical_and_trash_duplicates() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        items_dir = Path(temp_dir)
+        (items_dir / "DUP1.pdf").write_bytes(b"%PDF-1.4\nraw\n")
+        (items_dir / "DUP1.zh.pdf").write_bytes(b"%PDF-1.4\nzh\n")
+        items = [
+            {
+                "key": "CANON",
+                "data": {
+                    "key": "CANON",
+                    "itemType": "journalArticle",
+                    "title": "Repeated Paper",
+                    "DOI": "10.1234/canon",
+                    "url": "https://example.org/canon",
+                },
+            },
+            {
+                "key": "DUP1",
+                "data": {
+                    "key": "DUP1",
+                    "itemType": "journalArticle",
+                    "title": "Repeated   Paper",
+                    "url": "https://example.org/canon",
+                    "collections": ["COLL"],
+                },
+            },
+            {
+                "key": "SINGLE",
+                "data": {
+                    "key": "SINGLE",
+                    "itemType": "journalArticle",
+                    "title": "Unique Paper",
+                },
+            },
+        ]
+
+        plan = zotero_runjs_dedupe.make_dedupe_plan(items, items_dir)
+        script = zotero_runjs_dedupe.build_dedupe_script(plan)
+
+    assert len(plan) == 1
+    assert plan[0]["canonical"] == "CANON"
+    assert plan[0]["duplicates"] == ["DUP1"]
+    assert plan[0]["ensureAttachments"][0]["sourceKey"] == "DUP1"
+    assert "evilread:duplicate-of:" in script
+    assert "trashTx" in script
 
 
 def main() -> int:
     tests = [
         test_safety_scan_rejects_secret_text,
         test_reflect_updates_preferences_and_writes_diff,
+        test_reflect_blocks_raw_interest_config_without_agent_analysis,
         test_zotero_ingest_marks_needs_pdf_when_attachment_fails,
         test_zotero_ingest_mirror_uses_monorepo_relative_artifact_links,
+        test_connector_ingest_reuses_existing_item_before_saveitems,
         test_zotero_runjs_collection_script_is_idempotent_and_reports_missing,
+        test_collections_import_script_reuses_existing_sha_item,
         test_zotero_runjs_attachment_script_imports_stored_pdfs,
         test_daily_note_contains_loop_sections_and_empty_comment_template,
         test_daily_note_uses_monorepo_relative_pdf_links,
@@ -2371,15 +2788,23 @@ def main() -> int:
         test_orchestrator_failure_notice_uses_mailer_without_secrets,
         test_reflect_parses_pending_comments_as_requests,
         test_orchestrator_blocks_daily_email_when_agent_decisions_are_missing,
+        test_orchestrator_uses_agent_analyzed_preferences_for_reflection,
+        test_orchestrator_reconciles_zotero_collections_and_attachments,
         test_daily_report_humanizes_daily_sections_without_changing_research_notes,
         test_start_my_day_daily_syncs_zotero_before_note_generation,
         test_task_scheduler_start_my_day_wrapper_contract,
+        test_relay_credentials_encrypt_decrypt_and_redact_secret_fields,
+        test_relay_credentials_cli_accepts_windows_utf8_bom_input,
+        test_git_tls_relay_generates_local_certificate_pair,
+        test_zotero_relay_skill_and_sync_script_contract,
         test_zotero_sync_writes_metadata_and_fallback_bibtex,
         test_zotero_sync_does_not_overwrite_bibtex_with_attachments,
         test_zotero_sync_ignores_plain_pdf_when_matching_translation_by_title,
         test_zotero_sync_lists_top_level_regular_items_from_local_api,
         test_zotero_sync_paginates_local_api_item_listing,
         test_zotero_sync_copies_parent_child_attachment_pdfs,
+        test_zotero_closure_audit_reports_duplicates_and_missing_attachments,
+        test_zotero_runjs_dedupe_plans_canonical_and_trash_duplicates,
     ]
     for test in tests:
         test()

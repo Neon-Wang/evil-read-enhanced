@@ -110,13 +110,14 @@ These links must resolve from the note location after cloning the same monorepo 
     v
 [reflect]   tools/start_my_day_reflect.py
             - Parse comments from daily notes
-            - Update research_interests.yaml and preference diff history
+            - Keep raw preference comments in preference diff history
+            - Update research_interests.yaml only from agent-analyzed preference_updates
 ```
 
 ## 5. Start My Day Stages
 
 1. **Fetch**: run `git -C C:\GitClient\windows\repos\evilread-workspace pull --ff-only`.
-2. **Reflect**: parse the previous daily note's `## 我的想法（Start My Day Comments）` section and update `vault/99_System/Config/research_interests.yaml`.
+2. **Reflect**: parse the previous daily note's `## 我的想法（Start My Day Comments）` section. Raw `+interest:` and `-avoid:` lines are audit input only and are written to `vault/99_System/preference_diffs/<date>.diff`; they must not be copied directly into `vault/99_System/Config/research_interests.yaml`. The calling Agent must provide `preference_updates` in `agent-decisions.json`, and only those normalized keywords/exclusions may update the config. In production email mode, missing `preference_updates` for raw preference comments is a hard failure.
 3. **Discover**: run `paper-query` or compatible source tools and produce confirmed/exploration JSON files.
 4. **Ingest**: write candidates to Zotero, record intended collections, and create Obsidian mirror notes.
 5. **Native collections**: run the Zotero Run JavaScript collection script when connector-created items need collection placement.
@@ -135,7 +136,7 @@ These links must resolve from the note location after cloning the same monorepo 
 | `tools/zotero_sync.py` | Mirror PDFs, translated PDFs, metadata, and BibTeX into `evilread-workspace/zotero`; supports `--all` to enumerate top-level Zotero items through the local API |
 | `tools/zotero_runjs_attachments.py` | Import mirrored original and translated PDFs into Zotero as stored attachments |
 | `tools/start_my_day_daily.py` | Refresh the Zotero mirror when `--workspace` is provided, then generate daily notes with confirmed/exploration sections, insight summaries, reading suggestions, optional LLM enhancement, and monorepo-relative PDF links |
-| `tools/start_my_day_reflect.py` | Parse daily comments and update preference config plus diff history |
+| `tools/start_my_day_reflect.py` | Parse daily comments, keep raw preference text in diff history, and update preference config only from Agent-normalized `preference_updates` |
 | `tools/safety_scan.py` | Scan for obvious secrets before committing sync artifacts |
 
 ## 7. Safety Rules

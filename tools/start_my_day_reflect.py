@@ -20,6 +20,10 @@ COMMENT_HEADINGS = (
 )
 
 
+class PreferenceAnalysisError(RuntimeError):
+    """Raised when raw preference comments would be written without agent analysis."""
+
+
 def looks_like_question(value: str) -> bool:
     return value.endswith(("?", "？")) or any(
         token in value
@@ -91,6 +95,75 @@ def append_unique(values: list[Any], additions: list[str]) -> list[str]:
     return added
 
 
+def raw_preference_values(comments: dict[str, list[str]]) -> set[str]:
+    return {
+        value.strip().lower()
+        for key in ("interests", "avoids")
+        for value in comments.get(key, [])
+        if value.strip()
+    }
+
+
+def extract_preference_keywords(preference_updates: dict[str, Any] | None, key: str, raw_values: set[str]) -> list[str]:
+    if not isinstance(preference_updates, dict):
+        return []
+    aliases = {
+        "interests": ("interests", "keywords"),
+        "avoids": ("avoids", "excluded_keywords"),
+    }
+    entries: list[Any] = []
+    for alias in aliases[key]:
+        value = preference_updates.get(alias)
+        if isinstance(value, list):
+            entries.extend(value)
+    keywords: list[str] = []
+    seen: set[str] = set()
+    for entry in entries:
+        if isinstance(entry, str):
+            candidate = entry
+        elif isinstance(entry, dict):
+            candidate = str(
+                entry.get("keyword")
+                or entry.get("topic")
+                or entry.get("query")
+                or entry.get("name")
+                or ""
+            )
+        else:
+            continue
+        normalized = " ".join(candidate.split()).strip()
+        lowered = normalized.lower()
+        if not normalized or lowered in seen or lowered in raw_values:
+            continue
+        keywords.append(normalized)
+        seen.add(lowered)
+    return keywords
+
+
+def analyzed_preference_comments(
+    comments: dict[str, list[str]],
+    preference_updates: dict[str, Any] | None,
+    require_agent_analysis: bool = False,
+) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    raw_values = raw_preference_values(comments)
+    analyzed = {
+        "interests": extract_preference_keywords(preference_updates, "interests", raw_values),
+        "avoids": extract_preference_keywords(preference_updates, "avoids", raw_values),
+    }
+    missing_categories = [
+        key
+        for key in ("interests", "avoids")
+        if comments.get(key) and not analyzed[key]
+    ]
+    if require_agent_analysis and missing_categories:
+        raise PreferenceAnalysisError(
+            "raw preference comments require agent-analyzed preference updates before updating research_interests.yaml: "
+            + ", ".join(missing_categories)
+        )
+    config_comments = {**comments, "interests": analyzed["interests"], "avoids": analyzed["avoids"]}
+    return config_comments, analyzed
+
+
 def append_to_yaml_sequence(lines: list[str], key: str, additions: list[str], item_indent: str) -> tuple[list[str], list[str]]:
     added: list[str] = []
     if not additions:
@@ -130,21 +203,32 @@ def update_research_domains_text(config_path: Path, comments: dict[str, list[str
     return {"keywords": keyword_additions, "excluded_keywords": excluded_additions}
 
 
-def update_research_config(config_path: Path, comments: dict[str, list[str]]) -> dict[str, list[str]]:
+def update_research_config(
+    config_path: Path,
+    comments: dict[str, list[str]],
+    preference_updates: dict[str, Any] | None = None,
+    require_agent_analysis: bool = False,
+) -> dict[str, Any]:
+    config_comments, analyzed = analyzed_preference_comments(
+        comments,
+        preference_updates,
+        require_agent_analysis=require_agent_analysis,
+    )
     raw_text = config_path.read_text(encoding="utf-8")
     config = yaml.safe_load(raw_text) or {}
     if isinstance(config.get("research_domains"), dict):
-        return update_research_domains_text(config_path, comments)
+        changes = update_research_domains_text(config_path, config_comments)
+        return {**changes, "preference_updates": analyzed}
     domains = config.setdefault("domains", [])
     if not domains:
         domains.append({"name": "General", "keywords": [], "excluded_keywords": []})
     primary_domain = domains[0]
     if not isinstance(primary_domain, dict):
         raise ValueError("first domain in research config must be a mapping")
-    keyword_additions = append_unique(ensure_list(primary_domain, "keywords"), comments["interests"])
-    excluded_additions = append_unique(ensure_list(primary_domain, "excluded_keywords"), comments["avoids"])
+    keyword_additions = append_unique(ensure_list(primary_domain, "keywords"), config_comments["interests"])
+    excluded_additions = append_unique(ensure_list(primary_domain, "excluded_keywords"), config_comments["avoids"])
     config_path.write_text(yaml.safe_dump(config, allow_unicode=True, sort_keys=False), encoding="utf-8")
-    return {"keywords": keyword_additions, "excluded_keywords": excluded_additions}
+    return {"keywords": keyword_additions, "excluded_keywords": excluded_additions, "preference_updates": analyzed}
 
 
 def write_preference_diff(vault_root: Path, diff_date: str, comments: dict[str, list[str]]) -> Path:
@@ -188,18 +272,30 @@ def append_open_questions(vault_root: Path, topics: list[str]) -> Path:
     return questions_path
 
 
-def reflect_daily_note(daily_note: Path, vault_root: Path, diff_date: str | None = None) -> dict[str, Any]:
+def reflect_daily_note(
+    daily_note: Path,
+    vault_root: Path,
+    diff_date: str | None = None,
+    preference_updates: dict[str, Any] | None = None,
+    require_agent_analysis: bool = False,
+) -> dict[str, Any]:
     diff_date = diff_date or date.today().isoformat()
     vault_root = Path(vault_root)
     daily_note = Path(daily_note)
     comments = parse_comment_lines(daily_note.read_text(encoding="utf-8"))
     config_path = vault_root / "99_System" / "Config" / "research_interests.yaml"
-    config_changes = update_research_config(config_path, comments)
+    config_changes = update_research_config(
+        config_path,
+        comments,
+        preference_updates=preference_updates,
+        require_agent_analysis=require_agent_analysis,
+    )
     diff_path = write_preference_diff(vault_root, diff_date, comments)
     questions_path = append_open_questions(vault_root, comments["deepen"] + comments["questions"])
     return {
         **comments,
         "config_changes": config_changes,
+        "preference_updates": config_changes.get("preference_updates", {"interests": [], "avoids": []}),
         "diff_path": str(diff_path),
         "open_questions_path": str(questions_path),
         "paper_query": {"confirmed_query": comments["deepen"], "avoid": comments["avoids"]},

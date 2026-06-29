@@ -40,6 +40,15 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:/Users/O2/Documents/G
 - CAT/cf_relay credentials 只从环境变量读取，不写入代码、workspace 或日志。
 - Zotero local API 不可用时，orchestrator 会尝试启动 Zotero 并轮询；仍失败时生成降级日报、发送邮件，并在 comments 中写入 `pending:`，下次 Start My Day 继续补。
 - `git pull --rebase` 冲突或 `git push` 失败时任务失败并禁止发送日报或失败通知邮件，避免在 workspace 同步状态不确定时发出误导性日报。
+- Zotero 闭环硬要求：
+  - 导入 discovered papers 前必须按 DOI 优先、标题兜底查重；已有 Zotero 父条目必须复用，禁止重复 `saveItems`。
+  - 本轮 Confirmed / Exploration 必须进入 Zotero native collection：`Confirmed/<YYYY-MM-DD>`、`Exploration/<YYYY-MM-DD>`。
+  - `collections/*.pdf` 导入必须按 sha256 幂等复用，并进入 `Collections/<YYYY-MM-DD>`。
+  - 每个本轮 Zotero 父条目必须挂载 stored attachments：`EvilRead Original PDF` 和可用时的 `EvilRead Translated PDF`。
+  - `evilread-workspace/zotero/library/items/<key>.json|.pdf|.zh.pdf` 是可审计 mirror，但不能替代 Zotero 本体写入；生产日报前必须执行 native reconciliation。
+  - 生产验收必须运行 `tools/zotero_closure_audit.py`；`duplicate_title_groups`、`zotero_parent_missing_mirror_json`、`mirror_json_not_in_zotero_parent`、`missing_original_attachment_for_mirrored_pdf`、`missing_translated_attachment_for_mirrored_pdf` 都必须为 0。
+  - 历史重复项用 `tools/zotero_runjs_dedupe.py --execute --archive-mirror` 非破坏性处理：canonical 保留，重复父条目打 `evilread:duplicate-of:<canonical>` 后移入 Zotero Trash，duplicate mirror 文件移入 `_deduped/<timestamp>/`。
+  - 历史 mirror-only 论文用 `tools/zotero_runjs_import_mirror_items.py` 导入 Zotero 本体；若 Zotero 生成了不同 parent key，必须把 mirror 文件重映射到实际 parent key。
 
 ## 5 阶段工作流
 
@@ -51,10 +60,29 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:/Users/O2/Documents/G
 
 2. **Reflect**
    - 解析最近一份 daily note 的 `## 我的想法（Start My Day Comments）` section。
-   - 将 `+interest:`、`-avoid:`、`!deepen:`、`?question:` 写回：
-     - `99_System/Config/research_interests.yaml`
-     - `99_System/preference_diffs/<date>.diff`
-     - `99_System/Indexes/open_questions.md`
+   - `+interest:` / `-avoid:` 原文只写入 `99_System/preference_diffs/<date>.diff` 做审计，不允许原封不动写入 `99_System/Config/research_interests.yaml`。
+   - 接收本轮调用 Agent 在 `agent-decisions.json` 中生成的 `preference_updates`，把用户自然语言偏好归纳为稳定关键词后再写入 `research_interests.yaml`：
+     ```json
+     {
+       "preference_updates": {
+         "interests": [
+           {
+             "keyword": "spiking neural calibration",
+             "domain": "Brain-Inspired AI",
+             "rationale": "Condenses the user's raw SNN calibration preference."
+           }
+         ],
+         "avoids": [
+           {
+             "keyword": "clinical medical imaging",
+             "rationale": "Captures the user's exclusion without copying the raw sentence."
+           }
+         ]
+       }
+     }
+     ```
+   - `!deepen:`、`?question:` 写入 `99_System/Indexes/open_questions.md`。
+   - 生产邮件模式下，如果 daily comments 含 `+interest:` / `-avoid:` 但缺少 Agent 归纳后的 `preference_updates`，orchestrator 必须失败，不能发送日报。
    - 推荐命令：
      ```powershell
      C:/Users/O2/Documents/GitHub/evil-read-enhanced/.venv/Scripts/python.exe `

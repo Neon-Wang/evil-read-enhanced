@@ -85,8 +85,69 @@ def build_import_script(requests: list[dict[str, Any]], run_date: str) -> str:
 (async () => {{
   const requests = {payload};
   const results = [];
+  const libraryID = Zotero.Libraries.userLibraryID;
+  function existingChild(name, parentID) {{
+    const collections = Zotero.Collections.getByLibrary(libraryID) || [];
+    for (const collection of collections) {{
+      const sameParent = (collection.parentID || false) === (parentID || false);
+      if (collection.name === name && sameParent) return collection;
+    }}
+    return null;
+  }}
+  async function ensureChild(name, parentID) {{
+    let collection = existingChild(name, parentID);
+    if (collection) return collection;
+    collection = new Zotero.Collection();
+    collection.libraryID = libraryID;
+    collection.name = name;
+    if (parentID) collection.parentID = parentID;
+    await collection.saveTx();
+    return collection;
+  }}
+  async function addToCollection(item, collection) {{
+    if (typeof item.getCollections === "function" && typeof item.setCollections === "function") {{
+      const collections = item.getCollections();
+      if (!collections.includes(collection.id)) {{
+        item.setCollections([...collections, collection.id]);
+        await item.saveTx();
+      }}
+      return;
+    }}
+    if (typeof item.addToCollection === "function") {{
+      item.addToCollection(collection.id);
+      await item.saveTx();
+      return;
+    }}
+    if (typeof collection.addItem === "function") {{
+      collection.addItem(item.id);
+      await collection.saveTx();
+      return;
+    }}
+    throw new Error("No supported collection add method for item " + item.key);
+  }}
+  const collectionsRoot = await ensureChild("Collections", false);
+  const importCollection = await ensureChild("{run_date}", collectionsRoot.id);
+  function itemTags(item) {{
+    if (!item || typeof item.getTags !== "function") return [];
+    return item.getTags().map(tag => typeof tag === "string" ? tag : tag.tag).filter(Boolean);
+  }}
+  function findExistingBySha(sha) {{
+    const marker = "evilread:sha256:" + sha;
+    const items = Zotero.Items.getAll(Zotero.Libraries.userLibraryID) || [];
+    for (const item of items) {{
+      if (!item || item.isAttachment && item.isAttachment()) continue;
+      if (itemTags(item).includes(marker)) return item;
+    }}
+    return null;
+  }}
   for (const request of requests) {{
     try {{
+      const existing = findExistingBySha(request.sha256);
+      if (existing) {{
+        await addToCollection(existing, importCollection);
+        results.push({{...request, status: "existing", parentKey: existing.key}});
+        continue;
+      }}
       const parent = new Zotero.Item("journalArticle");
       parent.setField("title", request.name.replace(/\\.pdf$/i, ""));
       parent.addTag("evilread:source:collections");
@@ -94,6 +155,7 @@ def build_import_script(requests: list[dict[str, Any]], run_date: str) -> str:
       parent.addTag("evilread:import-date:{run_date}");
       parent.addTag("evilread:sha256:" + request.sha256);
       const parentKey = await parent.saveTx();
+      await addToCollection(parent, importCollection);
       const attachment = await Zotero.Attachments.importFromFile({{
         file: request.path,
         parentItemID: parent.id,
@@ -134,7 +196,7 @@ def normalize_runner_result(result: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(result)
     if key:
         normalized["zotero_key"] = key
-    normalized["status"] = "imported" if status in {"imported", "ok", "success"} and key else status or "failed"
+    normalized["status"] = "imported" if status in {"imported", "ok", "success", "existing"} and key else status or "failed"
     return normalized
 
 

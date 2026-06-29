@@ -33,6 +33,8 @@ import start_my_day_daily
 import start_my_day_reflect
 import zotero_ingest
 import zotero_markdown_index
+import zotero_runjs_attachments
+import zotero_runjs_collections
 
 REPO_ROOT = SCRIPT_DIR.parent
 PAPER_QUERY_DIR = REPO_ROOT / "paper-query" / "scripts"
@@ -218,6 +220,21 @@ def write_agent_input_bundle(
         "required_fields": {
             "overview": "daily overview in Chinese",
             "reading_suggestions": ["ordered suggestions"],
+            "preference_updates": {
+                "interests": [
+                    {
+                        "keyword": "agent-normalized research keyword, not a verbatim user sentence",
+                        "domain": "target research domain",
+                        "rationale": "why this keyword captures the user's raw comment",
+                    }
+                ],
+                "avoids": [
+                    {
+                        "keyword": "agent-normalized excluded keyword, not a verbatim user sentence",
+                        "rationale": "why this exclusion captures the user's raw comment",
+                    }
+                ],
+            },
             "papers": {"<zotero_key_or_title>": {"summary": "", "why": "", "observations": [], "next_action": ""}},
             "research_notes": {"<zotero_key_or_title>": {"domain": "", "topic": "", "research_question": "", "method": "", "contribution": "", "evidence": "", "limits": "", "inspiration": ""}},
             "comment_answers": {"<question>": {"answer": "", "sources": [], "status": "answered"}},
@@ -268,6 +285,68 @@ def assert_production_ready(
         problems.append(f"research notes incomplete={len(research_result.get('incomplete', []))}")
     if problems:
         raise ProductionGateError("; ".join(problems))
+
+
+def result_keys(items: list[dict[str, Any]]) -> list[str]:
+    keys: list[str] = []
+    seen: set[str] = set()
+    for item in items:
+        key = str(item.get("zotero_key") or item.get("parentKey") or "").strip()
+        if key and key not in seen:
+            keys.append(key)
+            seen.add(key)
+    return keys
+
+
+def reconcile_zotero_native(
+    *,
+    workspace_root: Path,
+    run_date: str,
+    confirmed_keys: list[str],
+    exploration_keys: list[str],
+    imported_keys: list[str] | None = None,
+    execute: bool = True,
+) -> dict[str, Any]:
+    imported_keys = imported_keys or []
+    all_keys = []
+    seen: set[str] = set()
+    for key in [*confirmed_keys, *exploration_keys, *imported_keys]:
+        if key and key not in seen:
+            all_keys.append(key)
+            seen.add(key)
+    if not all_keys:
+        return {"status": "skipped", "reason": "no zotero keys"}
+    collection_script = zotero_runjs_collections.build_collection_script(
+        confirmed_keys=confirmed_keys,
+        exploration_keys=exploration_keys,
+        run_date=run_date,
+    )
+    attachment_items = zotero_runjs_attachments.load_items_from_mirror(
+        workspace_root / "zotero" / "library" / "items",
+        all_keys,
+    )
+    attachment_script = zotero_runjs_attachments.build_attachment_script(attachment_items)
+    script_dir = workspace_root / "zotero" / "library" / "logs"
+    script_dir.mkdir(parents=True, exist_ok=True)
+    collection_js = script_dir / f"reconcile_collections_{run_date}.js"
+    attachment_js = script_dir / f"reconcile_attachments_{run_date}.js"
+    collection_js.write_text(collection_script, encoding="utf-8")
+    attachment_js.write_text(attachment_script, encoding="utf-8")
+    if execute:
+        zotero_runjs_collections.execute_in_runjs_window(collection_script, title_re=".*JavaScript.*|Zotero", wait_seconds=8.0)
+        zotero_runjs_collections.execute_in_runjs_window(attachment_script, title_re=".*JavaScript.*|Zotero", wait_seconds=15.0)
+        status = "executed"
+    else:
+        status = "scripted"
+    return {
+        "status": status,
+        "confirmed_keys": confirmed_keys,
+        "exploration_keys": exploration_keys,
+        "imported_keys": imported_keys,
+        "attachment_keys": all_keys,
+        "collection_script": str(collection_js),
+        "attachment_script": str(attachment_js),
+    }
 
 
 def ingest_discovered_papers(
@@ -529,13 +608,19 @@ def run_loop(
     else:
         pre_start_commit = ""
     zotero_status = ensure_zotero_available(zotero_api)
+    agent_decisions = load_agent_decisions(agent_decisions_path)
     previous_note = latest_previous_daily(vault_root, run_date)
     comments = {"interests": [], "avoids": [], "deepen": [], "questions": [], "requests": []}
     reflection: dict[str, Any] | None = None
     if previous_note:
-        reflection = start_my_day_reflect.reflect_daily_note(previous_note, vault_root, run_date)
+        reflection = start_my_day_reflect.reflect_daily_note(
+            previous_note,
+            vault_root,
+            run_date,
+            preference_updates=agent_decisions.get("preference_updates") if isinstance(agent_decisions, dict) else None,
+            require_agent_analysis=send_email,
+        )
         comments = {key: reflection.get(key, []) for key in comments}
-    agent_decisions = load_agent_decisions(agent_decisions_path)
     comment_result = comment_tasks.run_comment_tasks(
         comments,
         workspace_root,
@@ -578,6 +663,7 @@ def run_loop(
             agent_decisions=agent_decisions,
             require_agent_research=send_email,
         )
+        zotero_native_result = {"status": "skipped", "reason": "zotero unavailable"}
     else:
         collections_result = collections_import.import_collection_pdfs(workspace_root, run_date, execute=not skip_zotero_import)
         confirmed_results = ingest_discovered_papers(
@@ -603,6 +689,14 @@ def run_loop(
             run_date,
             agent_decisions=agent_decisions,
             require_agent_research=send_email,
+        )
+        zotero_native_result = reconcile_zotero_native(
+            workspace_root=workspace_root,
+            run_date=run_date,
+            confirmed_keys=result_keys(confirmed_results),
+            exploration_keys=result_keys(exploration_results),
+            imported_keys=result_keys(collections_result.get("imported", [])),
+            execute=not skip_zotero_import,
         )
     assert_production_ready(
         send_email=send_email,
@@ -651,6 +745,7 @@ def run_loop(
         "collections": collections_result,
         "zotero_sync": zotero_result,
         "zotero_api": zotero_status,
+        "zotero_native": zotero_native_result,
         "zotero_index": str(zotero_index),
         "research": research_result,
         "translated_pdf_package": pdf_package_result,

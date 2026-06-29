@@ -27,6 +27,8 @@ After Zotero mirror and translation sync, `tools/package_translated_pdfs.py` sca
 
 The reusable code-server workbench contract lives in `deploy/code-server/evilread.code-workspace` and is explained in `deploy/code-server/WORKSPACE_GUIDE.md`. That workspace opens both `C:\GitClient\windows\repos\evilread-workspace` and this repository, and includes VS Code tasks for production Start My Day, dry-run validation, smoke checks, and the translated PDF station.
 
+For cross-machine handoff, use the project skill `zotero-relay/SKILL.md`. It standardizes `git.jiashengfan.space` as the external Git endpoint, expects this host's local HTTPS Git relay on `127.0.0.1:18083`, and uses `tools/relay_credentials.py` for encrypted relay credentials. Start the local TLS relay with `scripts/start-git-tls-relay.ps1`; then validate the credentialed local path with `scripts/sync-zotero-workspace.ps1 -UseLocalRelay -Credentials deploy\relay\credentials.enc.json -BeforeStartMyDay` before switching the same workflow to `https://git.jiashengfan.space/o2/evilread-workspace.git`.
+
 Email sending is self-contained in `tools/cat_mailer.py`; it does not import from an external CAT checkout. Credentials are read only from environment variables such as `CAT_EMAIL_PROVIDER`, `CAT_CF_RELAY_URL`, and `CAT_CF_RELAY_SECRET`.
 
 ## 语言 / Language
@@ -53,12 +55,13 @@ Email sending is self-contained in `tools/cat_mailer.py`; it does not import fro
 
 ### 1. start-my-day - 每日论文推荐
 - 作为 Zotero ↔ Obsidian ↔ Skills 闭环入口，按 Fetch、Reflect、Discover、Ingest + Translate + Sync、Daily Note 五阶段运行
-- 先从 `evilread-workspace` monorepo 拉取最新内容，再把 daily 评论回写到 `vault/99_System/Config/research_interests.yaml`
+- 先从 `evilread-workspace` monorepo 拉取最新内容；daily 评论原文只进入 `99_System/preference_diffs/`，必须由 Agent 归纳为 `preference_updates` 后才能写入 `vault/99_System/Config/research_interests.yaml`
 - 使用 `paper-query` 生成 Confirmed 与 Exploration 两类候选
-- 通过 Zotero Connector 写入 Zotero，并用 `evilread:collection:Library/...` 标签记录 Confirmed/Exploration 归属；随后可用 `tools/zotero_runjs_collections.py` 通过 Zotero Run JavaScript 补齐 native collection
+- 通过 Zotero Connector 写入 Zotero，并在写入前按 DOI、规范化标题去重；随后用 `tools/zotero_runjs_collections.py` 通过 Zotero Run JavaScript 补齐 native collection
 - 检测 PDF2zh 翻译产物，并将原 PDF、翻译 PDF、BibTeX 同步到 `evilread-workspace/zotero`
 - `tools/start_my_day_daily.py --workspace C:\GitClient\windows\repos\evilread-workspace` 会在生成 Daily note 前自动调用 Zotero local API，将本机 Zotero 顶层条目全量镜像到 workspace；也可单独运行 `tools/zotero_sync.py --all --workspace C:\GitClient\windows\repos\evilread-workspace` 做补跑或排障
 - 在 Zotero 本体中给论文条目挂载原 PDF 与翻译 PDF stored attachments
+- `tools/zotero_closure_audit.py` 是 Zotero 闭环验收入口；若历史重复项已经存在，用 `tools/zotero_runjs_dedupe.py` 生成可追溯计划、移入 Zotero 回收站并归档 duplicate mirror 文件；若 mirror 中有尚未进入 Zotero 本体的文献，用 `tools/zotero_runjs_import_mirror_items.py` 导入并重映射到 Zotero 实际 key
 - 生成包含 Zotero 镜像、相对 PDF 链接、今日概览、阅读建议、每篇论文 insight block 和空评论模板的 Obsidian daily note
 - Daily insight 默认用标题、摘要、mirror note 和 PDF 可用性做规则版分析；可选接入 OpenAI-compatible LLM 增强总结，环境变量为 `EVILREAD_LLM_BASE_URL`、`EVILREAD_LLM_MODEL`、`EVILREAD_LLM_API_KEY`
 
@@ -330,6 +333,8 @@ evil-read-enhanced/
 ├── requirements.txt          # Python 依赖
 ├── tools/                    # Zotero/Obsidian 闭环工具
 │   ├── safety_scan.py        # commit 前敏感信息扫描
+│   ├── relay_credentials.py  # 加密/解密跨机器 relay 凭据
+│   ├── git_tls_relay.py      # 本地 Gitea HTTPS relay，用于 127.0.0.1:18083 凭据 fetch 验收
 │   ├── start_my_day_reflect.py # daily 评论回写研究偏好
 │   ├── start_my_day_daily.py # 生成闭环 daily note
 │   ├── zotero_ingest.py      # paper-query 结果写入 Zotero Connector 并记录 collection intent
@@ -337,11 +342,16 @@ evil-read-enhanced/
 │   ├── translate_watch.py    # PDF2zh 健康检查与翻译产物检测
 │   ├── zotero_sync.py        # PDF / 翻译 PDF / BibTeX 同步到 evilread-workspace/zotero
 │   ├── zotero_runjs_attachments.py # 导入 monorepo PDF 为 Zotero stored attachments
+│   ├── zotero_closure_audit.py # 审计 Zotero 本体与 mirror 是否一致
+│   ├── zotero_runjs_dedupe.py # 归并历史重复父条目并归档 duplicate mirror
+│   ├── zotero_runjs_import_mirror_items.py # 将 mirror-only 文献导入 Zotero native
 │   ├── zotero_index.py       # Zotero storage 全文索引
 │   └── tests/
 │       └── smoke_loop.py     # 闭环工具离线 smoke
 ├── start-my-day/             # 每日推荐技能
 │   ├── SKILL.md              # 技能定义文件
+├── zotero-relay/             # 跨机器接力同步 skill
+│   └── SKILL.md
 │   └── scripts/
 │       ├── search_arxiv.py   # arXiv/Semantic Scholar 搜索脚本
 │       ├── scan_existing_notes.py  # 扫描现有笔记

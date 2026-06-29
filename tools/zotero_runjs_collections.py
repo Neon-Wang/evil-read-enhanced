@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
 from datetime import date
 import json
 from pathlib import Path
@@ -120,33 +121,110 @@ return JSON.stringify({{
 """
 
 
-def execute_in_runjs_window(script: str, title_re: str, wait_seconds: float) -> None:
+def set_windows_clipboard_text(text: str) -> None:
+    CF_UNICODETEXT = 13
+    GMEM_MOVEABLE = 0x0002
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+    kernel32.GlobalAlloc.argtypes = [ctypes.c_uint, ctypes.c_size_t]
+    kernel32.GlobalAlloc.restype = ctypes.c_void_p
+    kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalLock.restype = ctypes.c_void_p
+    kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalUnlock.restype = ctypes.c_bool
+    user32.SetClipboardData.argtypes = [ctypes.c_uint, ctypes.c_void_p]
+    user32.SetClipboardData.restype = ctypes.c_void_p
+    if not user32.OpenClipboard(None):
+        raise ctypes.WinError()
     try:
-        from pywinauto import Desktop
+        user32.EmptyClipboard()
+        data = text.encode("utf-16le") + b"\x00\x00"
+        handle = kernel32.GlobalAlloc(GMEM_MOVEABLE, len(data))
+        if not handle:
+            raise ctypes.WinError()
+        locked = kernel32.GlobalLock(handle)
+        if not locked:
+            raise ctypes.WinError()
+        ctypes.memmove(locked, data, len(data))
+        kernel32.GlobalUnlock(handle)
+        if not user32.SetClipboardData(CF_UNICODETEXT, handle):
+            raise ctypes.WinError()
+    finally:
+        user32.CloseClipboard()
+
+
+def find_runjs_window(desktop: Any, title_re: str, timeout_seconds: float = 0.0) -> Any | None:
+    end = time.time() + timeout_seconds
+    while True:
+        for window in reversed(desktop.windows(title_re=title_re)):
+            if "JavaScript" in window.window_text() or re.search(title_re, window.window_text()):
+                return window
+        if time.time() >= end:
+            return None
+        time.sleep(0.25)
+
+
+def open_runjs_window() -> bool:
+    try:
+        from pywinauto import Application, Desktop, mouse
     except ImportError as exc:
         raise RuntimeError("pywinauto is required for --execute") from exc
 
     desktop = Desktop(backend="uia")
-    selected: tuple[Any, list[Any]] | None = None
-    for window in reversed(desktop.windows(title_re=title_re)):
-        editors: list[Any] = []
-        for control in window.descendants(control_type="Edit"):
-            try:
-                value = control.iface_value.CurrentValue
-                is_readonly = control.iface_value.CurrentIsReadOnly
-            except Exception:
-                continue
-            rectangle = control.rectangle()
-            if not is_readonly and (rectangle.top >= 100 or "return" in value or len(value) > 20):
-                editors.append(control)
-        if editors:
-            selected = (window, editors)
-            break
-    if selected is None:
-        raise RuntimeError("Run JavaScript editor was not found")
-    window, editors = selected
+    zotero_windows = [window for window in desktop.windows() if "Zotero" in window.window_text()]
+    if not zotero_windows:
+        return False
+    zotero = zotero_windows[0]
+    app = Application(backend="uia").connect(handle=zotero.handle)
+    window = app.window(handle=zotero.handle)
     window.set_focus()
-    editors[0].iface_value.SetValue(script)
+    time.sleep(0.2)
+    tools_menu = window.child_window(auto_id="toolsMenu", control_type="MenuItem")
+    if not tools_menu.exists(timeout=3):
+        return False
+    tools_menu.click_input()
+    time.sleep(0.2)
+    # Zotero native menu popups are not exposed as descendants. The row offsets are
+    # stable relative to the Tools menu on Windows Zotero 7.
+    menu_rect = tools_menu.rectangle()
+    developer_x = menu_rect.right + 26
+    developer_y = menu_rect.bottom + 176
+    runjs_x = menu_rect.right + 205
+    runjs_y = menu_rect.bottom + 219
+    mouse.click(button="left", coords=(developer_x, developer_y))
+    time.sleep(0.4)
+    mouse.click(button="left", coords=(runjs_x, runjs_y))
+    time.sleep(1.0)
+    return find_runjs_window(desktop, ".*JavaScript.*", timeout_seconds=3) is not None
+
+
+def execute_in_runjs_window(script: str, title_re: str, wait_seconds: float) -> None:
+    try:
+        from pywinauto import Desktop, keyboard
+    except ImportError as exc:
+        raise RuntimeError("pywinauto is required for --execute") from exc
+
+    desktop = Desktop(backend="uia")
+    window = find_runjs_window(desktop, title_re, timeout_seconds=1)
+    if window is None and open_runjs_window():
+        window = find_runjs_window(desktop, title_re, timeout_seconds=3)
+    if window is None:
+        raise RuntimeError("Run JavaScript editor was not found")
+    window.set_focus()
+    editor_panes = [
+        pane
+        for pane in window.descendants(control_type="Pane")
+        if getattr(pane.element_info, "automation_id", "") == "editor-code"
+    ]
+    if not editor_panes:
+        raise RuntimeError("Run JavaScript code editor was not found")
+    editor_panes[0].click_input()
+    time.sleep(0.1)
+    set_windows_clipboard_text(script)
+    keyboard.send_keys("^a")
+    time.sleep(0.1)
+    keyboard.send_keys("^v")
+    time.sleep(0.2)
 
     checkboxes = [
         checkbox
@@ -159,7 +237,7 @@ def execute_in_runjs_window(script: str, title_re: str, wait_seconds: float) -> 
     run_buttons = [
         button
         for button in window.descendants(control_type="Button")
-        if button.rectangle().left < 120 and button.rectangle().top > 30
+        if button.window_text() in {"执行", "Run"}
     ]
     if not run_buttons:
         raise RuntimeError("Run button was not found")

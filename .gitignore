@@ -10,3 +10,8 @@ paper_query_scholar_diag.png
 tools/dist/
 deploy/code-server/verification-*.png
 logs/
+deploy/relay/credentials.local.json
+deploy/relay/credentials.plain.json
+deploy/relay/*.decrypted.json
+deploy/relay/git-relay.local.crt
+deploy/relay/git-relay.local.key
