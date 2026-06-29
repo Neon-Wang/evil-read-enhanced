@@ -49,11 +49,29 @@ If PowerShell script execution is restricted in the current shell, run the same 
 powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\code-server\install.ps1
 ```
 
-The installer checks for Node.js 20 and installs it with `winget` if needed. It then installs `code-server@4.93.1` globally with npm and installs recommended extensions. This pair is pinned for the native Windows npm deployment path: newer code-server npm releases currently expect newer Node versions but have Windows postinstall issues on this host. Upgrade only after re-verifying the Windows npm install path end to end.
+The installer checks the Node.js major required by the pinned code-server version and installs it with `winget` if needed. It then installs `code-server@4.117.0` with npm into a short path:
+
+```text
+C:\cs117
+```
+
+The short install path is intentional. Newer code-server npm releases build native VS Code dependencies during install; long Windows paths can exceed the legacy 260-character MSBuild path limit.
 
 - `yzhang.markdown-all-in-one`
+- `jishii1204.markdown-live-editor`
 - `tomoki1207.pdf`
 - `foam.foam-vscode` optional, installed by default because this is an Obsidian-style knowledge workspace
+- `johnny-zhao.oai-compatible-copilot@0.3.6` installed from Marketplace VSIX cache
+
+By default the installer also downloads the latest `openai.chatgpt` VSIX from Marketplace and installs it from the local VSIX cache. This is required because the Codex extension currently has pre-release-only Marketplace packaging and code-server cannot install it by extension ID alone.
+
+`johnny-zhao.oai-compatible-copilot` is pinned to `0.3.6` because `0.4.x` requires VS Code `^1.120.0`, while `code-server@4.117.0` currently embeds Code `1.117.0`.
+
+Use `-SkipCodexPreRelease` if you want to install only code-server and the knowledge-workspace extensions.
+
+The installer also runs `patch-markdown-live-editor.ps1`. That patch makes Markdown Live Editor send clicked links back through VS Code instead of letting the browser resolve them under `/static/out/vs/workbench/...`. This is required for Obsidian-style relative links such as `../../../../zotero/library/items/C43KBR9V.pdf`.
+
+Markdown Live Editor is installed but disabled by the start script. It is kept under the runtime root so it can be re-enabled later without finding the extension again.
 
 ## Start
 
@@ -74,6 +92,30 @@ http://127.0.0.1:18080
 ```
 
 The opened workspace is `evilread.code-workspace`, with `evilread-workspace` as the first folder and `evil-read-enhanced` as the second folder.
+
+For the full execution framework, reusable VS Code tasks, Start My Day production path, translated PDF station, and scheduled automation contract, see [WORKSPACE_GUIDE.md](./WORKSPACE_GUIDE.md).
+
+The start script enables the Codex extension's proposed API gate:
+
+```text
+--enable-proposed-api openai.chatgpt
+```
+
+Open the Codex side bar from the Codex activity-bar icon or run `Codex: Open Codex Sidebar` from the command palette. On this host, `code-server@4.117.0` with `openai.chatgpt@26.5623.42026` renders the Codex side bar and shows local Codex Tasks from the host account. The browser console still reports that `chatSessionsProvider` and `languageModelProxy` proposals do not exist in code-server's VS Code Web build, so VS Code's native chat session integration is not expected to be complete.
+
+## Markdown Reading and Editing
+
+Markdown files open in the normal source editor by default so they remain editable.
+
+For an Obsidian-like reading surface while editing, use VS Code's source-plus-preview workflow:
+
+```text
+Ctrl+K V
+```
+
+That opens a rendered Markdown preview beside the source editor. Edits in the source pane update the preview live, and preview/editor scrolling is synchronized.
+
+Markdown Live Editor remains installed under `%LOCALAPPDATA%\EvilRead\code-server\extensions-disabled`, but code-server does not load it while it is disabled.
 
 ## Stop
 
@@ -120,8 +162,8 @@ C:\Users\O2\Documents\GitHub\evil-read-enhanced\.venv\Scripts\python.exe C:\User
 Browser verification should confirm:
 
 - the file tree shows both workspace folders
-- a Markdown file can be opened and edited
-- a PDF can be opened with the PDF viewer extension
+- Markdown opens as editable source, and `Ctrl+K V` provides rendered live preview beside it
+- a PDF can be opened with a web-compatible PDF viewer extension or browser fallback
 - the integrated terminal can run PowerShell, Git, and the EvilRead Python tools
 
 ## Docker or WSL Fallback

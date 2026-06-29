@@ -27,14 +27,120 @@
     "workbench.editorAssociations": {
       "*.pdf": "pdf.preview"
     },
+    "markdown.preview.breaks": true,
+    "markdown.preview.linkify": true,
+    "markdown.preview.typographer": true,
+    "markdown.preview.openMarkdownLinks": "inPreview",
+    "markdown.preview.scrollPreviewWithEditor": true,
+    "markdown.preview.scrollEditorWithPreview": true,
+    "markdown.preview.doubleClickToSwitchToEditor": true,
+    "markdown.links.openLocation": "currentGroup",
+    "markdown.updateLinksOnFileMove.enabled": "prompt",
     "security.workspace.trust.enabled": true,
     "security.workspace.trust.startupPrompt": "never"
   },
   "extensions": {
     "recommendations": [
       "yzhang.markdown-all-in-one",
+      "jishii1204.markdown-live-editor",
       "tomoki1207.pdf",
-      "foam.foam-vscode"
+      "foam.foam-vscode",
+      "openai.chatgpt",
+      "johnny-zhao.oai-compatible-copilot"
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "EvilRead: Start code-server workbench",
+        "type": "shell",
+        "command": "powershell",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder:evil-read-enhanced}\\deploy\\code-server\\start.ps1"
+        ],
+        "options": {
+          "cwd": "${workspaceFolder:evil-read-enhanced}"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Start My Day: production run",
+        "type": "shell",
+        "command": "powershell",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder:evil-read-enhanced}\\scripts\\run-start-my-day.ps1"
+        ],
+        "options": {
+          "cwd": "${workspaceFolder:evil-read-enhanced}"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Start My Day: dry run without email/git/Zotero import",
+        "type": "shell",
+        "command": "powershell",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder:evil-read-enhanced}\\scripts\\run-start-my-day.ps1",
+          "-NoSendEmail",
+          "-SkipGit",
+          "-SkipZoteroImport"
+        ],
+        "options": {
+          "cwd": "${workspaceFolder:evil-read-enhanced}"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Verify: loop smoke checks",
+        "type": "shell",
+        "command": "${workspaceFolder:evil-read-enhanced}\\.venv\\Scripts\\python.exe",
+        "args": [
+          "${workspaceFolder:evil-read-enhanced}\\tools\\tests\\smoke_loop.py"
+        ],
+        "options": {
+          "cwd": "${workspaceFolder:evil-read-enhanced}"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Translated PDF Station: build",
+        "type": "shell",
+        "command": "C:\\Users\\O2\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\bin\\pnpm.cmd",
+        "args": [
+          "run",
+          "build"
+        ],
+        "options": {
+          "cwd": "${workspaceFolder:evil-read-enhanced}\\translated-pdf-station"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Translated PDF Station: serve 18082",
+        "type": "shell",
+        "command": "C:\\Users\\O2\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\bin\\pnpm.cmd",
+        "args": [
+          "run",
+          "serve:downloads"
+        ],
+        "options": {
+          "cwd": "${workspaceFolder:evil-read-enhanced}\\translated-pdf-station"
+        },
+        "problemMatcher": []
+      }
     ]
   }
 }

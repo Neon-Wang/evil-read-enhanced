@@ -9,3 +9,4 @@ paper_query_*.txt
 paper_query_scholar_diag.png
 tools/dist/
 deploy/code-server/verification-*.png
+logs/

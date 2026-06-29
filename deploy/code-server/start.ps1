@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$BindAddress = "127.0.0.1:18080",
+    [string]$CodeServerInstallRoot = "C:\cs117",
     [switch]$Background
 )
 
@@ -48,17 +49,35 @@ $workspaceFile = Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "evilread.co
 $runtimeRoot = Join-Path $env:LOCALAPPDATA "EvilRead\code-server"
 $userDataDir = Join-Path $runtimeRoot "user-data"
 $extensionsDir = Join-Path $runtimeRoot "extensions"
+$disabledExtensionsDir = Join-Path $runtimeRoot "extensions-disabled"
 $pidFile = Join-Path $runtimeRoot "code-server.pid"
 $stdoutLogFile = Join-Path $runtimeRoot "code-server.out.log"
 $stderrLogFile = Join-Path $runtimeRoot "code-server.err.log"
 
-New-Item -ItemType Directory -Force -Path $userDataDir, $extensionsDir | Out-Null
+New-Item -ItemType Directory -Force -Path $userDataDir, $extensionsDir, $disabledExtensionsDir | Out-Null
+
+Get-ChildItem -LiteralPath $extensionsDir -Directory -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -like "jishii1204.markdown-live-editor-*" } |
+    ForEach-Object {
+        $targetPath = Join-Path $disabledExtensionsDir $_.Name
+        if (Test-Path -LiteralPath $targetPath) {
+            Remove-Item -LiteralPath $targetPath -Recurse -Force
+        }
+        Move-Item -LiteralPath $_.FullName -Destination $targetPath
+        Write-Host "[INFO] Disabled Markdown Live Editor extension: $targetPath"
+    }
 
 $nodeExe = Get-RequiredCommand "node.exe" @("C:\Program Files\nodejs\node.exe")
 $npmCmd = Get-RequiredCommand "npm.cmd" @("C:\Program Files\nodejs\npm.cmd")
 
-$npmPrefix = (& $npmCmd config get prefix).Trim()
-$codeServerEntry = Join-Path $npmPrefix "node_modules\code-server\out\node\entry.js"
+$shortPathCodeServerEntry = Join-Path $CodeServerInstallRoot "node_modules\code-server\out\node\entry.js"
+if (Test-Path -LiteralPath $shortPathCodeServerEntry) {
+    $codeServerEntry = $shortPathCodeServerEntry
+}
+else {
+    $npmPrefix = (& $npmCmd config get prefix).Trim()
+    $codeServerEntry = Join-Path $npmPrefix "node_modules\code-server\out\node\entry.js"
+}
 if (-not (Test-Path -LiteralPath $codeServerEntry)) {
     throw "code-server entrypoint not found: $codeServerEntry"
 }
@@ -83,6 +102,7 @@ $codeServerArgs = @(
     "--auth", "none",
     "--user-data-dir", $userDataDir,
     "--extensions-dir", $extensionsDir,
+    "--enable-proposed-api", "openai.chatgpt",
     "--disable-telemetry"
 )
 
@@ -90,6 +110,7 @@ Write-Host "[INFO] Workspace repo: $workspaceRepo"
 Write-Host "[INFO] Tools repo: $toolsRepo"
 Write-Host "[INFO] Workspace file: $($workspaceFile.Path)"
 Write-Host "[INFO] Runtime root: $runtimeRoot"
+Write-Host "[INFO] code-server entry: $codeServerEntry"
 Write-Host "[INFO] URL: http://$BindAddress"
 Write-Host "[INFO] Auth: none; keep this listener loopback/private and put Cloudflare Access in front before any public exposure."
 

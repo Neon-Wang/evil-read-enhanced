@@ -2,6 +2,33 @@
 
 > 邪修的论文阅读工作流 - 自动化论文搜索、推荐、分析和整理（增强版：支持多源论文查询、Google Scholar、Nature 与浏览器辅助检索）
 
+## Start My Day Full Loop
+
+Current closed-loop entry:
+
+```powershell
+.\.venv\Scripts\python.exe tools\start_my_day_orchestrator.py `
+  --workspace C:\GitClient\windows\repos\evilread-workspace `
+  --date <YYYY-MM-DD> `
+  --send-email
+```
+
+Windows Task Scheduler can call the checked-in wrapper:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Users\O2\Documents\GitHub\evil-read-enhanced\scripts\run-start-my-day.ps1"
+```
+
+The wrapper uses the repo `.venv`, defaults to `C:\GitClient\windows\repos\evilread-workspace`, checks required mail environment variables without printing values, and then runs the orchestrator with `--send-email`. For validation, use `-NoSendEmail -SkipGit -SkipZoteroImport` against a temporary workspace.
+
+This runs Collections PDF import, Zotero mirror sync, `zotero/INDEX.md`, `vault/20_Research` note completion, translated Chinese PDF packaging, Markdown daily report generation, workspace commit/push, and CAT-compatible email delivery. The email body is the generated Markdown daily report file content verbatim.
+
+After Zotero mirror and translation sync, `tools/package_translated_pdfs.py` scans `C:\GitClient\windows\repos\evilread-workspace\zotero\library\items\*.zh.pdf`, compares each file by `sha256 + size + mtime`, writes incremental zip batches under `C:\GitClient\windows\repos\evilread-workspace\downloads\translated-pdfs\batches\<YYYY-MM-DD>\`, and records `manifest.csv`. The daily report includes the current batch link as `https://code-file.jiashengfan.space/downloads/<run_id>.zip`; `translated-pdf-station` serves that manifest and the persisted zip files.
+
+The reusable code-server workbench contract lives in `deploy/code-server/evilread.code-workspace` and is explained in `deploy/code-server/WORKSPACE_GUIDE.md`. That workspace opens both `C:\GitClient\windows\repos\evilread-workspace` and this repository, and includes VS Code tasks for production Start My Day, dry-run validation, smoke checks, and the translated PDF station.
+
+Email sending is self-contained in `tools/cat_mailer.py`; it does not import from an external CAT checkout. Credentials are read only from environment variables such as `CAT_EMAIL_PROVIDER`, `CAT_CF_RELAY_URL`, and `CAT_CF_RELAY_SECRET`.
+
 ## 语言 / Language
 
 - [中文版](README.md)
@@ -30,8 +57,10 @@
 - 使用 `paper-query` 生成 Confirmed 与 Exploration 两类候选
 - 通过 Zotero Connector 写入 Zotero，并用 `evilread:collection:Library/...` 标签记录 Confirmed/Exploration 归属；随后可用 `tools/zotero_runjs_collections.py` 通过 Zotero Run JavaScript 补齐 native collection
 - 检测 PDF2zh 翻译产物，并将原 PDF、翻译 PDF、BibTeX 同步到 `evilread-workspace/zotero`
+- `tools/start_my_day_daily.py --workspace C:\GitClient\windows\repos\evilread-workspace` 会在生成 Daily note 前自动调用 Zotero local API，将本机 Zotero 顶层条目全量镜像到 workspace；也可单独运行 `tools/zotero_sync.py --all --workspace C:\GitClient\windows\repos\evilread-workspace` 做补跑或排障
 - 在 Zotero 本体中给论文条目挂载原 PDF 与翻译 PDF stored attachments
-- 生成包含 Zotero 镜像和空评论模板的 Obsidian daily note
+- 生成包含 Zotero 镜像、相对 PDF 链接、今日概览、阅读建议、每篇论文 insight block 和空评论模板的 Obsidian daily note
+- Daily insight 默认用标题、摘要、mirror note 和 PDF 可用性做规则版分析；可选接入 OpenAI-compatible LLM 增强总结，环境变量为 `EVILREAD_LLM_BASE_URL`、`EVILREAD_LLM_MODEL`、`EVILREAD_LLM_API_KEY`
 
 ### 2. paper-analyze - 论文深度分析
 - 深度分析单篇论文
