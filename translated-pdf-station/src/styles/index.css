@@ -1,0 +1,649 @@
+@import 'tailwindcss';
+
+/* ----------------------------------------------------------------------------
+ * Theme tokens (Tailwind v4 CSS-first config).
+ *
+ * Token namespaces consumed by Tailwind v4 utilities:
+ *   --color-*         → bg-*, text-*, border-* utilities (palette below)
+ *   --radius-*        → rounded-* utilities
+ *   --font-*          → font-sans / font-serif / font-mono utilities
+ *   --font-weight-*   → font-normal / font-medium / font-semibold / font-bold
+ *   --text-*          → text-xs / text-sm / text-base / text-lg / ... (font-size)
+ *   --text-*--line-height → paired line-height for each text-* utility
+ *   --leading-*       → leading-tight / leading-normal / leading-relaxed
+ *   --tracking-*      → tracking-tight / tracking-normal / tracking-wide
+ *   --spacing         → base step for ALL p-N / m-N / gap-N / size-* utilities
+ *   --shadow-*        → shadow-sm / shadow-md / shadow-lg
+ *
+ * Non-utility tokens (consumed directly via `var(--…)` in @layer base):
+ *   --scrollbar-*     → drives the global `::-webkit-scrollbar` + Firefox
+ *                       `scrollbar-color` rules in @layer base. Each
+ *                       design preset rebinds these to match its brand —
+ *                       `apple` gets a soft cool-gray tube; `vercel` gets
+ *                       a near-square monochrome bar; `linear` gets a
+ *                       narrow architectural thumb; etc. NOT a Tailwind
+ *                       namespace — no utilities are generated — but
+ *                       lives in @theme so presets can override it in
+ *                       lock-step with the palette / typography tokens.
+ *
+ * Strategy: the base @theme below stays minimal (colour palette + radii +
+ * font-sans). Each design preset further down then overrides typography,
+ * density, and shadow tokens to express its design language — e.g. `apple`
+ * widens spacing and uses SF Pro at 17px; `vercel` tightens spacing and
+ * drops base font-size to 14px; `anthropic` increases line-height for
+ * editorial readability. Tokens not overridden by a preset fall back to
+ * Tailwind v4's defaults, which is the sane behaviour for `default`.
+ * --------------------------------------------------------------------------*/
+@theme {
+  --color-background: oklch(1 0 0);
+  --color-foreground: oklch(0.18 0.01 260);
+
+  --color-muted: oklch(0.96 0.005 260);
+  --color-muted-foreground: oklch(0.45 0.02 260);
+
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.18 0.01 260);
+
+  --color-border: oklch(0.92 0.005 260);
+  --color-input: oklch(0.92 0.005 260);
+  --color-ring: oklch(0.55 0.18 280);
+
+  --color-primary: oklch(0.55 0.18 280);
+  --color-primary-foreground: oklch(0.98 0 0);
+
+  --color-secondary: oklch(0.96 0.005 260);
+  --color-secondary-foreground: oklch(0.18 0.01 260);
+
+  --color-accent: oklch(0.96 0.01 280);
+  --color-accent-foreground: oklch(0.18 0.01 260);
+
+  --color-destructive: oklch(0.6 0.21 25);
+  --color-destructive-foreground: oklch(0.98 0 0);
+
+  --radius-lg: 0.75rem;
+  --radius-md: 0.5rem;
+  --radius-sm: 0.375rem;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --font-serif:
+    ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+
+  /* Surface treatment (not a Tailwind namespace — consumed directly by
+   * components via var()). Each design preset overrides these to express
+   * its morphism character: neumorphism zeroes the border + uses inset
+   * shadow, liquid-glass adds backdrop-blur, neo-brutalism thickens the
+   * border to 3px, etc. */
+  --surface-border-width: 1px;
+  --surface-backdrop: none;
+  --surface-inset-shadow: none;
+  --surface-ring-width: 0px;
+  --surface-ring-color: transparent;
+  --surface-hover-shadow: 0 4px 12px -2px oklch(0 0 0 / 0.1);
+  --surface-active-shadow: 0 1px 2px oklch(0 0 0 / 0.08);
+
+  /* shadcn / animate-ui registry components (Command, Toaster, etc.) reference
+   * the bare names `--popover`, `--border`, `--radius`, plus the Tailwind
+   * tokens `--color-popover` / `--color-popover-foreground`. Eikon's design
+   * tokens already define the matching prefixed forms (`--color-card`,
+   * `--color-card-foreground`, `--color-border`, `--radius-md`) and every
+   * design preset / dark-mode block overrides those — so alias the shadcn
+   * names to them. Registry-pulled components then inherit the active
+   * design preset and dark-mode cascade automatically, without per-snapshot
+   * patching. The CSS variable cascade resolves at use-site, so swapping
+   * `<html class="design-apple">` updates `--color-card` which transparently
+   * updates `--popover` for any inline style that reads it. */
+  --color-popover: var(--color-card);
+  --color-popover-foreground: var(--color-card-foreground);
+  --popover: var(--color-card);
+  --popover-foreground: var(--color-card-foreground);
+  --border: var(--color-border);
+  --radius: var(--radius-md);
+
+  /* Shadow scale defaults — match Tailwind v4's built-in `shadow-{sm,md,lg}`
+   * so a base scaffold (no design class on <html>) renders identical
+   * shadows to vanilla Tailwind. Design presets override via the
+   * `:root.design-<name>` blocks below; the `[class*="design-"] .shadow-*`
+   * rules near `.dark .shadow-*` re-point Tailwind's inlined utility
+   * values at the live `var(--shadow-*)` cascade so per-design overrides
+   * actually take effect on `.shadow-{sm,md,lg}` consumers. */
+  --shadow-sm:
+    0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md:
+    0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  /* Scrollbar (not a Tailwind namespace — see header comment). The
+   * `border` trick on the thumb creates a faux padding inside the track:
+   * the border is painted in the (usually transparent) track colour via
+   * `background-clip: padding-box`, so the visible thumb reads narrower
+   * than the gutter. Each preset can override either the geometry
+   * (size / radius / border) or the palette (thumb / hover / track). */
+  --scrollbar-size: 12px;
+  --scrollbar-thumb: oklch(0.82 0.005 260);
+  --scrollbar-thumb-hover: oklch(0.55 0.02 260);
+  --scrollbar-track: transparent;
+  --scrollbar-thumb-radius: 8px;
+  --scrollbar-thumb-border: 3px;
+
+  /* Semantic state colours (success / warning / info). Paired with
+   * `*-foreground` tokens so any colour used as a background has an
+   * adequate-contrast partner. Kept separate from `--color-destructive`
+   * so callers can express "negative confirmation" (destructive) vs
+   * "non-fatal alert" (warning) vs "positive confirmation" (success)
+   * vs "neutral notice" (info). Each design preset is free to override
+   * — `vercel` flattens to monochrome, `neo-brutalism` saturates them
+   * to match its primary palette, `cyberpunk` rebinds them to neon. */
+  --color-success: oklch(0.6 0.16 150);
+  --color-success-foreground: oklch(0.98 0 0);
+  --color-warning: oklch(0.75 0.16 75);
+  --color-warning-foreground: oklch(0.18 0.02 75);
+  --color-info: oklch(0.62 0.18 230);
+  --color-info-foreground: oklch(0.98 0 0);
+
+  /* Sidebar tokens — chrome surface for nav rails, drawers, top bars.
+   * Default to the card surface so existing layouts (which were written
+   * against `--color-card`) get a zero-visual-change migration; design
+   * presets that want a distinct chrome (linear's slightly-darker rail,
+   * vercel's contrast aside) re-bind these without touching components.
+   * `-primary` / `-accent` exist so an active nav item can pull its own
+   * pair instead of bleeding the page-level brand colour into chrome. */
+  --color-sidebar: var(--color-card);
+  --color-sidebar-foreground: var(--color-card-foreground);
+  --color-sidebar-primary: var(--color-primary);
+  --color-sidebar-primary-foreground: var(--color-primary-foreground);
+  --color-sidebar-accent: var(--color-accent);
+  --color-sidebar-accent-foreground: var(--color-accent-foreground);
+  --color-sidebar-border: var(--color-border);
+  --color-sidebar-ring: var(--color-ring);
+
+  /* Chart palette — five hues spaced ~60° around the OKLCH wheel so
+   * adjacent series don't read as the same colour at low chroma.
+   * Anchored at the brand primary's hue family for the 1st slot;
+   * presets with a strong identity hue (anthropic warm, aurora dual,
+   * vercel mono) override these to keep dataviz on-brand. */
+  --chart-1: oklch(0.62 0.19 280);
+  --chart-2: oklch(0.65 0.17 160);
+  --chart-3: oklch(0.7 0.16 80);
+  --chart-4: oklch(0.66 0.2 30);
+  --chart-5: oklch(0.6 0.2 320);
+
+  /* Motion — durations + easing curves. NOT a Tailwind namespace; the
+   * `--duration-*` token name overlaps with Tailwind v4's
+   * `transition-duration` lookup, so writing `duration-fast` resolves
+   * via the same cascade. Easing curves are exposed via the
+   * `--ease-*` namespace which Tailwind v4 reads for `ease-*`
+   * utilities. Each preset overrides to express its motion language —
+   * apple's heavier spring, linear's snappy fast, neo-brutalism's
+   * hard-cut zero-blur, cyberpunk's near-instant flicker. */
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+  --duration-slow: 320ms;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Focus-ring geometry. `--color-ring` already drives the ring's hue;
+   * these add the ring width + offset which differ per design system
+   * (Vercel uses a 3px offset ring, Apple uses a thicker halo, Linear
+   * uses a tight 2px no-offset ring). Components consume via
+   * `[--tw-ring-offset-width:var(--ring-offset-width)]` style escapes
+   * or directly via arbitrary classes. Default offset uses the page
+   * background so the ring "punches through" any chrome. */
+  --ring-width: 2px;
+  --ring-offset-width: 2px;
+  --ring-offset-color: var(--color-background);
+
+  /* Z-index scale. Tailwind v4 inlines numeric `z-*` utilities so we
+   * don't try to rebind those; instead these named tokens exist for
+   * components to consume via arbitrary classes (`z-[var(--z-modal)]`)
+   * and stay coherent across dialog / popover / toast / tooltip
+   * stacking. Spaced 100 apart so consumers can drop ad-hoc layers
+   * between named tiers if absolutely needed. */
+  --z-base: 0;
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-fixed: 1200;
+  --z-overlay: 1300;
+  --z-modal: 1400;
+  --z-popover: 1500;
+  --z-toast: 1600;
+  --z-tooltip: 1700;
+
+  /* Modal / sheet / drawer overlay scrim. Replaces hardcoded
+   * `bg-black/60` and `bg-black/50` literals that previously lived
+   * inside dialog.tsx and sheet.tsx — those bypass the design cascade
+   * (you can't tint or lighten the scrim per preset). Default tracks
+   * the historical 60% black; `liquid-glass` and `cyberpunk` override
+   * to match their own ambient mood. */
+  --color-overlay: oklch(0 0 0 / 0.6);
+
+  /* Display font face. Promoted from claymorphism-only to a base token
+   * so any preset can have a distinct headline face (e.g. anthropic
+   * could pair Lora body with a Newsreader display, vercel could keep
+   * Geist Sans body and use Geist Mono for headings). Defaults to
+   * `--font-sans` so presets that don't opt in see no change. */
+  --font-display: var(--font-sans);
+
+  /* Display type-scale — Tailwind v4's defaults for `text-3xl/4xl/5xl/6xl`
+   * are inlined into the utility classes, so per-preset overrides only
+   * applied to claymorphism's local block. Promoting these to base
+   * makes the scale per-preset overridable without each preset having
+   * to duplicate the four declarations; cyberpunk + claymorphism
+   * actually opt in. */
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+  --text-5xl: 3rem;
+  --text-5xl--line-height: 1;
+  --text-6xl: 3.75rem;
+  --text-6xl--line-height: 1;
+
+  /* Modal-tier shadow. Tailwind v4 ships `--shadow-xl` as a built-in
+   * but the per-design overrides only cover sm/md/lg, so dialog/sheet
+   * panels that reach for `shadow-xl` keep the vanilla rgba drop in
+   * every preset (visible regression on vercel / brutalism / neumorphism
+   * / cyberpunk where lower tiers have already been redefined to
+   * something dramatic). Adding xl as a token + matching reroute below
+   * lets dialog/sheet stay on `shadow-xl` and inherit the design's
+   * elevation language. */
+  --shadow-xl:
+    0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* Ambient body backdrop. Most presets render `body` as a flat
+   * `var(--color-background)` fill (so this stays `none`); the
+   * morphism presets that paint a vivid backdrop behind translucent
+   * cards (`liquid-glass` photo refraction, `claymorphism` paper
+   * grain) override `--bg-ambient` to a multi-layer gradient/SVG
+   * string. Pulling that out of `body { ... }` rules into a token
+   * means a future preset can borrow the same backdrop mechanism
+   * without re-declaring a body selector — and strip-features keeps
+   * the @theme block intact when the preset is the survivor. */
+  --bg-ambient: none;
+
+}
+
+
+/* Dark mode tokens are activated via the `.dark` class on <html>. */
+@variant dark (&:where(.dark, .dark *));
+
+/* ----------------------------------------------------------------------------
+ * Make Tailwind shadow utilities reactive to `.dark` overrides.
+ *
+ * Tailwind v4 inlines the @theme `--shadow-*` value into the generated
+ * `.shadow-sm/.shadow-md/.shadow-lg` utility classes at BUILD time:
+ *
+ *   .shadow-sm { --tw-shadow: <literal @theme value>; }
+ *
+ * That literal is the LIGHT-mode value, so any `.dark { --shadow-sm: ... }`
+ * override (we use those for material / skeuomorphism / neumorphism /
+ * liquid-glass / claymorphism / aurora / neo-brutalism)
+ * silently fails for components that use the `shadow-sm` utility — only
+ * components that go through `[box-shadow:var(--shadow-sm)]` see the swap.
+ *
+ * Result without this rule: cards rendered in dark-mode neumorphism keep
+ * their light-mode dual shadow — `oklch(1 0 0 / 0.75)` on the top-left —
+ * which reads as an ugly bright halo against the dark background.
+ *
+ * The rules below re-point the utility's internal `--tw-shadow` variable
+ * at the live `var(--shadow-*)` cascade INSIDE `.dark`, so design presets
+ * that override `--shadow-*` for dark mode actually take effect on every
+ * `.shadow-*` consumer (Card, Button, etc.) without each component having
+ * to be rewritten with arbitrary-value syntax.
+ * --------------------------------------------------------------------------*/
+.dark .shadow-sm { --tw-shadow: var(--shadow-sm); }
+.dark .shadow-md { --tw-shadow: var(--shadow-md); }
+.dark .shadow-lg { --tw-shadow: var(--shadow-lg); }
+.dark .shadow-xl { --tw-shadow: var(--shadow-xl); }
+
+/* Same problem in light mode once design classes can override --shadow-* at
+ * runtime: Tailwind only inlined the BASE @theme defaults into the utility,
+ * so a `:root.design-claymorphism { --shadow-sm: ... }` swap is invisible to
+ * `.shadow-sm`. Re-point inside any `design-*` root so the utility reads the
+ * live cascade. We don't want this on plain `:root` because that would
+ * regress non-playground scaffolds (CLI users) where the utility carrying
+ * the literal default is the cheaper path. */
+:root[class*="design-"] .shadow-sm { --tw-shadow: var(--shadow-sm); }
+:root[class*="design-"] .shadow-md { --tw-shadow: var(--shadow-md); }
+:root[class*="design-"] .shadow-lg { --tw-shadow: var(--shadow-lg); }
+:root[class*="design-"] .shadow-xl { --tw-shadow: var(--shadow-xl); }
+
+.dark {
+  --color-background: oklch(0.16 0.01 260);
+  --color-foreground: oklch(0.97 0 0);
+
+  --color-muted: oklch(0.22 0.01 260);
+  --color-muted-foreground: oklch(0.7 0.02 260);
+
+  --color-card: oklch(0.18 0.01 260);
+  --color-card-foreground: oklch(0.97 0 0);
+
+  --color-border: oklch(0.26 0.01 260);
+  --color-input: oklch(0.26 0.01 260);
+  --color-ring: oklch(0.7 0.18 280);
+
+  --color-primary: oklch(0.7 0.18 280);
+  --color-primary-foreground: oklch(0.16 0.01 260);
+
+  --color-secondary: oklch(0.22 0.01 260);
+  --color-secondary-foreground: oklch(0.97 0 0);
+
+  --color-accent: oklch(0.26 0.02 280);
+  --color-accent-foreground: oklch(0.97 0 0);
+
+  /* State colours — lifted lightness so they stay legible on a dark
+   * background; foreground swaps to dark to keep WCAG. */
+  --color-success: oklch(0.72 0.16 150);
+  --color-success-foreground: oklch(0.14 0.04 150);
+  --color-warning: oklch(0.82 0.16 75);
+  --color-warning-foreground: oklch(0.18 0.04 75);
+  --color-info: oklch(0.74 0.16 230);
+  --color-info-foreground: oklch(0.14 0.04 230);
+
+  /* Sidebar tokens stay transparent passthroughs — `--color-card` is
+   * already redefined for dark mode three lines up, so chrome keeps
+   * tracking it without a separate dark-mode declaration. */
+
+  /* Chart palette — same hue spacing, lifted L for dark legibility. */
+  --chart-1: oklch(0.72 0.18 280);
+  --chart-2: oklch(0.74 0.16 160);
+  --chart-3: oklch(0.78 0.15 80);
+  --chart-4: oklch(0.74 0.18 30);
+  --chart-5: oklch(0.7 0.18 320);
+
+  /* Overlay scrim deepens slightly so the modal still reads as
+   * "behind a tint" against an already-dark page. */
+  --color-overlay: oklch(0 0 0 / 0.7);
+
+  --scrollbar-thumb: oklch(0.36 0.01 260);
+  --scrollbar-thumb-hover: oklch(0.55 0.02 260);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+    /* Firefox + modern Edge honour `scrollbar-color`; WebKit pseudo-element
+     * rules below handle Chrome / Safari / older Edge. We set BOTH because
+     * the two engines silently ignore the other one's syntax. */
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    background-color: var(--color-background);
+    /* Ambient backdrop — defaults to `none` so most presets render a flat
+     * page colour. Morphism presets (liquid-glass, claymorphism, future
+     * sunset/blueprint) override `--bg-ambient` to a multi-layer
+     * gradient or SVG noise string and inherit the same fixed/cover
+     * positioning here. */
+    background-image: var(--bg-ambient);
+    background-attachment: fixed;
+    background-size: cover;
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+
+  /* --- Scrollbar (WebKit / Chromium / Safari) ---
+   * Token-driven so each `design=<preset>` overlay can rebrand the
+   * scrollbar without forking the rules. Firefox above uses the same
+   * tokens via the `scrollbar-color` shorthand. */
+  ::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: var(--scrollbar-thumb-radius);
+    /* Transparent border + padding-box clipping creates a faux gutter:
+     * the thumb visually shrinks below the scrollbar gutter width by
+     * `--scrollbar-thumb-border` on each side, while still being big
+     * enough to grab. Setting border-color = track-color would also
+     * work but breaks when track is transparent (default). */
+    border: var(--scrollbar-thumb-border) solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+  ::-webkit-scrollbar-corner {
+    background: var(--scrollbar-track);
+  }
+
+  /* Headline display face. Each preset defines `--font-display` (the
+   * base default tracks `--font-sans`, so presets that don't opt in
+   * see no change — `claymorphism` sets Fredoka, `cyberpunk` sets
+   * JetBrains Mono, etc.). Scoping to h1-h3 keeps body copy on the
+   * sans face; if a preset wants display on h4+ too, add it locally. */
+  :is(h1, h2, h3) {
+    font-family: var(--font-display);
+  }
+}
+
+/* ----------------------------------------------------------------------------
+ * Variant overlays.
+ *
+ * The blocks below are gated by `@eikon:variant(<axis>=<value>)` markers.
+ * strip-features keeps only the chosen block per axis when scaffolding into a
+ * new project; in the unstripped template all blocks coexist (CSS rules
+ * either apply to different selectors or are merged into a single @theme).
+ *
+ * Each `design=...` block ships **both** an `@theme` override for light mode
+ * AND a `.dark` override for dark mode — otherwise the base `.dark { ... }`
+ * block above would punch through the preset and revert primary/accent back
+ * to the default palette. Adding a new preset means filling in both halves.
+ * --------------------------------------------------------------------------*/
+
+/* --- design axis ---------------------------------------------------------
+ * Each preset below is modelled after a real, publicly-documented design
+ * system. Colour anchors are taken from the linked brand/HIG sources; values
+ * are translated into OKLCH so the perceptual lightness channel makes
+ * contrast ratios easy to reason about (see customize-design SKILL.md).
+ * ----------------------------------------------------------------------- */
+
+
+
+/* @eikon:variant(design=linear) begin */
+/* Linear.app brand — Lavender-Blue #5E6AD2 on Mercury White #F4F5F8 /
+ * Nordic Gray #222326, Inter typography, compact radii.
+ * Source: https://linear.app/brand   https://developers.linear.app/brand
+ * Dark mode primary uses #828FFF "Lavender Hover" so the accent stays
+ * visible on the dark surface.
+ *
+ * Typography & density:
+ *   - 15px base body, 13px secondary, tight spacing step → high info
+ *     density typical of productivity tools.
+ *   - Linear's signature "hairline" shadow uses a single solid 1px offset
+ *     instead of a blur, giving a sharper, more architectural feel. */
+:root.design-linear {
+  --color-background: oklch(0.97 0.005 264);
+  --color-foreground: oklch(0.25 0.005 264);
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.25 0.005 264);
+  --color-muted: oklch(0.94 0.005 264);
+  --color-muted-foreground: oklch(0.5 0.01 264);
+  --color-border: oklch(0.88 0.005 264);
+  --color-input: oklch(0.88 0.005 264);
+  --color-primary: oklch(0.53 0.17 282);
+  --color-primary-foreground: oklch(0.98 0 0);
+  --color-secondary: oklch(0.94 0.005 264);
+  --color-secondary-foreground: oklch(0.25 0.005 264);
+  --color-accent: oklch(0.92 0.04 282);
+  --color-accent-foreground: oklch(0.25 0.005 264);
+  --color-ring: oklch(0.53 0.17 282);
+  --radius-lg: 0.5rem;
+  --radius-md: 0.375rem;
+  --radius-sm: 0.25rem;
+  --font-sans:
+    'Inter Variable', Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', system-ui, sans-serif;
+
+  --spacing: 0.22rem;
+
+  --text-xs: 0.6875rem;
+  --text-xs--line-height: 0.95rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.15rem;
+  --text-base: 0.9375rem;
+  --text-base--line-height: 1.35rem;
+  --text-lg: 1.0625rem;
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.65rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 1.9rem;
+
+  --font-weight-medium: 510;
+  --font-weight-semibold: 590;
+  --tracking-tight: -0.011em;
+
+  --shadow-sm: 0 1px 0 0 oklch(0.4 0.01 264 / 0.05);
+  --shadow-md: 0 2px 4px -1px oklch(0.4 0.01 264 / 0.08);
+  --shadow-lg: 0 8px 20px -4px oklch(0.4 0.01 264 / 0.12);
+
+  /* Linear scrollbar — narrow architectural thumb. Tight 0.25rem radius
+   * matches `--radius-sm`; reduced border (2px) keeps the thumb visible
+   * inside the 9px gutter. */
+  --scrollbar-size: 9px;
+  --scrollbar-thumb: oklch(0.82 0.005 264);
+  --scrollbar-thumb-hover: oklch(0.5 0.012 264);
+  --scrollbar-thumb-radius: 0.25rem;
+  --scrollbar-thumb-border: 2px;
+
+  /* Linear sidebar — slightly darker than card so the productivity
+   * rail reads with weight. Border deepens with it. */
+  --color-sidebar: oklch(0.95 0.005 264);
+  --color-sidebar-border: oklch(0.85 0.008 264);
+
+  /* Linear chart — five lavender-leaning hues (purple, blue, teal,
+   * mint, amber) so adjacent series stay distinguishable on Linear
+   * surfaces (which already lean cool). */
+  --chart-1: oklch(0.53 0.17 282);
+  --chart-2: oklch(0.62 0.16 220);
+  --chart-3: oklch(0.65 0.15 175);
+  --chart-4: oklch(0.7 0.14 140);
+  --chart-5: oklch(0.7 0.18 60);
+
+  /* Linear motion — snappy. Productivity tools want responses that
+   * feel instant; 100ms / 160ms / 240ms hits the "fast software"
+   * Linear is famous for. */
+  --duration-fast: 100ms;
+  --duration-normal: 160ms;
+  --duration-slow: 240ms;
+
+  /* Linear focus ring — tight 2px, no offset (Linear's UI hugs
+   * elements; a halo would push the layout). */
+  --ring-width: 2px;
+  --ring-offset-width: 0px;
+}
+.dark.design-linear {
+  --color-background: oklch(0.18 0.005 264);
+  --color-foreground: oklch(0.95 0.005 264);
+  --color-card: oklch(0.21 0.005 264);
+  --color-card-foreground: oklch(0.95 0.005 264);
+  --color-muted: oklch(0.24 0.005 264);
+  --color-muted-foreground: oklch(0.7 0.01 264);
+  --color-border: oklch(0.28 0.005 264);
+  --color-input: oklch(0.28 0.005 264);
+  --color-primary: oklch(0.69 0.18 280);
+  --color-primary-foreground: oklch(0.18 0.005 264);
+  --color-secondary: oklch(0.24 0.005 264);
+  --color-secondary-foreground: oklch(0.95 0.005 264);
+  --color-accent: oklch(0.28 0.05 280);
+  --color-accent-foreground: oklch(0.95 0.005 264);
+  --color-ring: oklch(0.69 0.18 280);
+
+  --color-sidebar: oklch(0.16 0.005 264);
+  --color-sidebar-border: oklch(0.24 0.005 264);
+
+  --scrollbar-thumb: oklch(0.36 0.005 264);
+  --scrollbar-thumb-hover: oklch(0.55 0.012 264);
+}
+:root.design-linear body {
+  background-image:
+    radial-gradient(circle at 12% 8%, color-mix(in oklab, var(--color-primary) 8%, transparent), transparent 24rem),
+    linear-gradient(180deg, color-mix(in oklab, var(--color-card) 72%, transparent), transparent 16rem);
+}
+:root.design-linear .app-nav-shell {
+  background: color-mix(in oklab, var(--color-sidebar) 94%, transparent);
+  border-color: var(--color-sidebar-border);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--color-border) 72%, transparent);
+}
+:root.design-linear .app-nav-link,
+:root.design-linear .app-nav-action,
+:root.design-linear .app-bottom-nav-link,
+:root.design-linear button.bg-transparent,
+:root.design-linear a.bg-transparent {
+  border-radius: var(--radius-md);
+}
+:root.design-linear .app-nav-link:hover,
+:root.design-linear .app-nav-action:hover,
+:root.design-linear .app-bottom-nav-link:hover,
+:root.design-linear button.bg-transparent:hover,
+:root.design-linear a.bg-transparent:hover {
+  opacity: 1;
+  background: color-mix(in oklab, var(--color-primary) 8%, var(--color-muted));
+  color: var(--color-foreground);
+}
+:root.design-linear .app-nav-link-active,
+:root.design-linear .app-bottom-nav-link-active {
+  background: color-mix(in oklab, var(--color-primary) 12%, var(--color-card));
+  color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-primary) 18%, transparent);
+}
+:root.design-linear .app-badge {
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--color-primary) 10%, var(--color-card));
+  color: var(--color-primary);
+}
+:root.design-linear input:not([type='checkbox']):not([type='radio']):not([type='range']),
+:root.design-linear textarea,
+:root.design-linear select {
+  background: color-mix(in oklab, var(--color-card) 86%, var(--color-muted));
+  border-color: color-mix(in oklab, var(--color-border) 86%, var(--color-primary));
+}
+/* @eikon:variant(design=linear) end */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* --- layout axis -----------------------------------------------------------
+ * Each layout (stacked / sidebar / topbar-sidebar / centered) is its own
+ * top-level component file under src/app/layouts/, so layout-specific
+ * styling lives in Tailwind classes inside that component — no axis-keyed
+ * CSS hooks are needed here. Keeping this comment as a sign-post for
+ * anyone hunting for the layout axis. */
+
+/* --- ui axis ---------------------------------------------------------------
+ * The `ui` axis is now a scaffold-time *implementation* switch, not a
+ * runtime style swap: `--ui custom` ships these self-authored components,
+ * `--ui shadcn` lays down the shadcn registry copies, `--ui animate-ui`
+ * lays down the animate-ui registry copies. The radius / shadow vibe
+ * each library wants lives in those component files (or in their own
+ * `:root` rules they choose to ship), not here. */

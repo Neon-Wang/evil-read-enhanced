@@ -1,0 +1,32 @@
+{
+  "nav": {
+    "home": "Home",
+    "counter": "Counter",
+    "examples": "Examples",
+    "tasks": "Tasks",
+    "menu": "Open navigation",
+    "menuDescription": "Primary navigation for the application",
+    "primary": "Primary navigation",
+    "sectionLabel": "Navigation",
+    "compose": "New task"
+  },
+  "actions": {
+    "toggleTheme": "Toggle theme",
+    "switchLanguage": "Switch language"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "language": {
+    "en": "English",
+    "zh": "中文"
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Page not found",
+    "description": "The page you are looking for does not exist or has been moved.",
+    "back": "Go home"
+  }
+}

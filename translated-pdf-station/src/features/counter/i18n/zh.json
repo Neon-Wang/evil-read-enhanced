@@ -1,0 +1,10 @@
+{
+  "title": "计数器示例",
+  "description": "演示 feature-first 模块结构、Zustand 状态、i18n 与测试。",
+  "current": "当前值：{{value}}",
+  "increment": "增加",
+  "decrement": "减少",
+  "reset": "重置",
+  "toastIncreased": "计数器已增加",
+  "toastReset": "计数器已重置为 0"
+}

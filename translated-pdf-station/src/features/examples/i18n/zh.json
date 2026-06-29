@@ -1,0 +1,511 @@
+{
+  "meta": {
+    "title": "组件展柜",
+    "subtitle": "浏览并试用模板内置的每一个 UI 基元、交互模式与性能演示。",
+    "devOnlyBadge": "仅开发环境",
+    "devOnlyNotice": "组件展柜仅在开发环境可预览，相关路由不会进入生产构建。",
+    "backToIndex": "返回展柜",
+    "backToApp": "返回应用",
+    "openInNewTab": "在新标签页打开",
+    "breadcrumb": "面包屑",
+    "notFound": "未找到",
+    "notFoundTitle": "组件未找到",
+    "unknownSection": "该组件不存在 —— 请从左侧选择一个。"
+  },
+  "overview": {
+    "pick": "从左侧选择一个组件，或从下方卡片网格进入。",
+    "featured": "精选入口",
+    "tryIt": "立即体验",
+    "metrics": {
+      "components": "组件",
+      "categories": "分类",
+      "layouts": "兼容布局"
+    }
+  },
+  "frame": {
+    "previewLabel": "预览",
+    "copyRoute": "复制路由",
+    "copied": "已复制"
+  },
+  "pager": {
+    "label": "组件翻页",
+    "prev": "上一项",
+    "next": "下一项"
+  },
+  "toc": {
+    "label": "组件",
+    "overview": "概览",
+    "filterPlaceholder": "筛选组件…",
+    "filterCount": "{{visible}} / {{total}}",
+    "noResults": "没有匹配的组件。",
+    "clearFilter": "清除筛选",
+    "uiPrimitives": "UI 基元",
+    "basics": "基础组件",
+    "forms": "表单与数据",
+    "feedbackGroup": "反馈与状态",
+    "content": "内容与特效",
+    "patterns": "交互模式",
+    "modals": "模态与浮层",
+    "performance": "性能"
+  },
+  "sections": {
+    "title": {
+      "title": "标题",
+      "description": "Heading 组件把语义层级（用哪个 h1–h6 标签）与视觉字号解耦，文字再大也不破坏文档大纲与无障碍结构。",
+      "sample2xl": "敏捷的棕色狐狸",
+      "sampleXl": "敏捷的棕色狐狸",
+      "sampleLg": "敏捷的棕色狐狸",
+      "sampleMd": "敏捷的棕色狐狸",
+      "sampleSm": "敏捷的棕色狐狸"
+    },
+    "breadcrumb": {
+      "title": "面包屑",
+      "description": "可组合的导航路径。当前页用 aria-current 标记；分隔符为装饰性元素，不进入无障碍树。",
+      "home": "首页",
+      "components": "组件",
+      "current": "面包屑"
+    },
+    "progress": {
+      "title": "进度条",
+      "description": "确定型进度条，带规范的 role=progressbar / aria-valuenow 无障碍属性，提供三种轨道尺寸。",
+      "uploading": "上传素材中",
+      "processing": "处理中",
+      "almost": "即将完成",
+      "done": "已完成",
+      "sizesLabel": "尺寸"
+    },
+    "kbd": {
+      "title": "键位",
+      "description": "语义化 <kbd> 键帽芯片，用于在行内或命令面板提示中标注快捷键。",
+      "commandPalette": "打开命令面板",
+      "save": "保存",
+      "search": "搜索",
+      "close": "关闭 / 取消"
+    },
+    "signup": {
+      "title": "注册表单",
+      "description": "react-hook-form + zod：必填校验、邮箱格式、密码强度、两次密码一致、条款勾选门槛，校验文案可翻译。",
+      "username": "用户名",
+      "usernamePlaceholder": "jane_doe",
+      "email": "邮箱",
+      "emailPlaceholder": "you@example.com",
+      "password": "密码",
+      "confirmPassword": "确认密码",
+      "terms": "我已阅读并同意条款与隐私政策",
+      "submit": "创建账户",
+      "reset": "重置",
+      "success": "账户已创建",
+      "errUsername": "用户名至少需要 3 个字符。",
+      "errEmail": "请输入有效的邮箱地址。",
+      "errPasswordMin": "密码至少需要 8 个字符。",
+      "errPasswordWeak": "密码需同时包含字母和数字。",
+      "errConfirm": "两次输入的密码不一致。",
+      "errTerms": "需要同意条款才能继续。"
+    },
+    "profile": {
+      "title": "账户资料表单",
+      "description": "把输入框与实时字数统计的多行文本、单选组、开关混合在一起——全部通过同一套 react-hook-form + zod 字段 API 绑定。",
+      "name": "昵称",
+      "namePlaceholder": "张三",
+      "bio": "简介",
+      "bioPlaceholder": "简单介绍一下你自己…",
+      "bioHint": "简洁为佳。",
+      "visibility": "资料可见性",
+      "vis_public": "公开 —— 所有人可见",
+      "vis_followers": "仅关注者可见",
+      "vis_private": "私密 —— 仅自己可见",
+      "notify": "邮件通知",
+      "notifyHint": "产品更新与安全提醒。",
+      "submit": "保存资料",
+      "success": "资料已保存",
+      "errName": "昵称至少需要 2 个字符。",
+      "errBio": "简介不能超过 160 个字符。"
+    },
+    "checkout": {
+      "title": "结算表单",
+      "description": "双列布局的结算表单，含 Select 绑定的配送方式与可选备注字段——由 zod 端到端校验。",
+      "name": "收件人",
+      "email": "邮箱",
+      "address": "地址",
+      "city": "城市",
+      "shipping": "配送方式",
+      "shippingPlaceholder": "选择配送方式",
+      "ship_standard": "标准（3–5 天）",
+      "ship_express": "加急（1–2 天）",
+      "ship_pickup": "门店自提",
+      "notes": "订单备注（选填）",
+      "notesPlaceholder": "请放在前台…",
+      "submit": "提交订单",
+      "success": "订单已提交",
+      "errName": "请输入收件人姓名。",
+      "errEmail": "请输入有效的邮箱地址。",
+      "errAddress": "请输入有效的地址。",
+      "errCity": "请输入城市。",
+      "errShipping": "请选择配送方式。",
+      "errNotes": "备注不能超过 280 个字符。"
+    },
+    "collapse": {
+      "title": "折叠面板",
+      "description": "零依赖手风琴。默认单开，面板用 grid-rows 0fr→1fr 技术做高度动画，在 prefers-reduced-motion 下退化为瞬时展开。",
+      "q1": "配送需要多久？",
+      "a1": "标准配送 3–5 个工作日送达，加急 1–2 天。",
+      "q2": "退货政策是怎样的？",
+      "a2": "任意商品 30 天内可全额退款，无需理由。",
+      "q3": "如何联系客服？",
+      "a3": "发送邮件至 support@example.com，或打开命令面板搜索「客服」。"
+    },
+    "divider": {
+      "title": "分割线",
+      "description": "横向与纵向两种分隔线。粗细跟随当前预设的边框宽度；默认装饰性，不进入无障碍树。",
+      "heading": "账户",
+      "body": "管理你的资料、计费与已连接的服务。",
+      "blog": "博客",
+      "docs": "文档",
+      "source": "源码"
+    },
+    "footer": {
+      "title": "页脚",
+      "description": "展示型页脚 —— 响应式链接行，窄屏堆叠、宽屏左右分布，版权信息固定在末尾。",
+      "about": "关于",
+      "docs": "文档",
+      "privacy": "隐私",
+      "contact": "联系",
+      "copyright": "© {{year}} Eikon. 保留所有权利。"
+    },
+    "table": {
+      "title": "表格",
+      "description": "原生表格基元的样式封装 —— 表头、可悬停行、状态 Badge 列与合计页脚行。内容溢出时根容器横向滚动。",
+      "caption": "你最近的账单列表。",
+      "invoice": "账单",
+      "status": "状态",
+      "method": "支付方式",
+      "amount": "金额",
+      "total": "合计",
+      "statuses": {
+        "paid": "已支付",
+        "pending": "待支付",
+        "overdue": "已逾期"
+      }
+    },
+    "loading": {
+      "title": "加载",
+      "description": "Spinner 三种尺寸、按钮内联用法，以及内容占位的 Skeleton 骨架屏。全部在 prefers-reduced-motion 下停止动画。",
+      "spinnerLabel": "Spinner 尺寸",
+      "inlineLabel": "与文字内联",
+      "buttonLabel": "保存中…",
+      "textLabel": "加载数据中…",
+      "skeletonLabel": "骨架屏占位"
+    },
+    "icon": {
+      "title": "图标",
+      "description": "模板使用 lucide-react 图标集 —— 统一描边粗细，用 h-*/w-* 控制尺寸，并用与全站一致的颜色 token 着色。",
+      "galleryLabel": "图标库",
+      "sizesLabel": "尺寸",
+      "colorsLabel": "语义着色"
+    },
+    "codeblock": {
+      "title": "代码块",
+      "description": "带语言标签和一键复制按钮的代码面板。零依赖的外壳样式，自动适配每个设计预设（不引入沉重的语法高亮引擎）。",
+      "copyLabel": "复制代码"
+    },
+    "typewriter": {
+      "title": "打字机",
+      "description": "在多条短语间循环，带打字+删除动画与闪烁光标。在 prefers-reduced-motion 下退化为静态文字。",
+      "lead": "打造",
+      "word1": "愉悦的体验。",
+      "word2": "无障碍的产品。",
+      "word3": "飞快的应用。"
+    },
+    "cursor": {
+      "title": "光标",
+      "description": "光标提示 —— 悬停每个方块即可切换到对应的 CSS cursor 值。设计预设还可全局定制光标外观。",
+      "hint": "悬停方块预览光标"
+    },
+    "button": {
+      "title": "Button",
+      "description": "Variant + Size 矩阵，内嵌 motion/react 的悬浮抬升与按压收缩微交互。",
+      "variantsLabel": "Variants",
+      "sizesLabel": "Sizes",
+      "statesLabel": "States",
+      "disabledLabel": "禁用",
+      "loadingLabel": "加载中",
+      "asChildLabel": "asChild",
+      "asChildHint": "渲染为 <a> 同时保留按钮样式",
+      "asChildLink": "前往 Eikon"
+    },
+    "card": {
+      "title": "Card",
+      "description": "包含普通、悬浮抬升以及结构化（Header + Content + Footer）三种形态。悬浮态在用户未启用 prefers-reduced-motion 时会上抬几像素。",
+      "plainLabel": "普通卡片",
+      "plainBody": "边框、内边距和 token 化的表面颜色，开箱即用。",
+      "hoverableLabel": "悬浮抬升",
+      "hoverableBody": "把鼠标移上来 — 整张卡片会向上抬升。",
+      "structuredLabel": "结构化",
+      "structuredTitle": "用组合构建",
+      "structuredBody": "组合 CardHeader + CardContent + CardFooter 让排版保持一致。",
+      "structuredAction": "我知道了"
+    },
+    "tabs": {
+      "title": "Tabs",
+      "description": "Radix Tabs，激活的 Trigger 通过 data-[state=active] 着色。三个面板共用同一行触发器。",
+      "accountTab": "账户",
+      "passwordTab": "密码",
+      "preferencesTab": "偏好",
+      "accountBody": "用户资料、计费信息和已连接的服务集中在这里。",
+      "passwordBody": "修改密码并查看活跃会话。",
+      "preferencesBody": "通知、语言、主题与无障碍设置。"
+    },
+    "form": {
+      "title": "表单控件",
+      "description": "Input、Textarea、Select、Checkbox、Radio 与 Switch —— 完整的输入控件家族，全部由同一套设计 token 绘制。",
+      "textLabel": "文本输入",
+      "emailLabel": "邮箱",
+      "emailPlaceholder": "you@example.com",
+      "noteLabel": "备注",
+      "notePlaceholder": "写点什么…",
+      "selectLabel": "下拉选择",
+      "selectPlaceholder": "选择一种水果",
+      "optApple": "苹果",
+      "optBanana": "香蕉",
+      "optCherry": "樱桃",
+      "toggleLabel": "多选框与开关",
+      "termsLabel": "我同意服务条款",
+      "notifyLabel": "邮件通知",
+      "radioLabel": "单选组",
+      "shipStandard": "标准",
+      "shipExpress": "加急",
+      "shipPickup": "自提"
+    },
+    "data": {
+      "title": "数据展示",
+      "description": "只读展示型基元：状态 Badge、带首字母兜底的 Avatar，以及 Skeleton 加载占位。",
+      "badgesLabel": "徽标",
+      "badgeDefault": "默认",
+      "badgeSecondary": "次要",
+      "badgeOutline": "描边",
+      "badgeSuccess": "成功",
+      "badgeWarning": "警告",
+      "badgeInfo": "信息",
+      "badgeDestructive": "危险",
+      "avatarsLabel": "头像",
+      "avatarAlt": "头像",
+      "skeletonLabel": "骨架屏"
+    },
+    "feedback": {
+      "title": "反馈与浮层",
+      "description": "覆盖全部语义色的内联 Alert 横幅，外加 Tooltip 与 Popover 两种轻量锚定浮层。",
+      "alertsLabel": "提示横幅",
+      "successTitle": "已保存",
+      "successBody": "你的修改已成功保存。",
+      "warningTitle": "请注意",
+      "warningBody": "你的试用将在三天后到期。",
+      "infoTitle": "新版本",
+      "infoBody": "有新版本可用 —— 刷新即可更新。",
+      "overlaysLabel": "Tooltip 与 Popover",
+      "tooltipTrigger": "悬停我",
+      "tooltipBody": "Tooltip 会反转表面颜色，读起来像一个标注。",
+      "popoverTrigger": "打开 Popover",
+      "popoverTitle": "快捷设置",
+      "popoverBody": "Popover 锚定在触发元素上，与命令面板共用同一套表面样式。"
+    },
+    "theme": {
+      "title": "主题 Token",
+      "description": "所有基元都通过 var(--color-*) CSS 自定义属性绘制。点击顶栏的主题切换即可看到所有 token 同步翻转。",
+      "currentMode": "当前模式",
+      "preferred": "偏好",
+      "resolved": "实际",
+      "swatchesLabel": "Token 色板"
+    },
+    "i18n": {
+      "title": "国际化",
+      "description": "feature 文案放在 src/features/<name>/i18n/<lng>.json 下，每个命名空间都是独立的懒加载 chunk。切换语言即可看到整棵树立即重渲染。",
+      "currentLanguage": "当前语言",
+      "tryItHint": "提示：使用顶栏的语言切换按钮。",
+      "sampleHeading": "示例文案",
+      "sampleBody": "这一段文字从 examples 命名空间读取，切换语言后会立即更新。"
+    },
+    "animation": {
+      "title": "基础动画",
+      "description": "Token 驱动的旋转、脉动与入场动画时长。全部尊重 prefers-reduced-motion。",
+      "spinLabel": "旋转",
+      "pulseLabel": "脉动",
+      "bounceLabel": "弹跳",
+      "hoverHint": "把鼠标移到方块上触发弹簧抬升。"
+    }
+  },
+  "pages": {
+    "toaster": {
+      "title": "Toast",
+      "description": "设计驱动的 Sonner 提示框，支持可配置的位置。Toast 样式自动跟随当前设计预设；切换位置以预览不同的弹出方位。",
+      "currentLabel": "位置",
+      "fireSuccess": "触发 success",
+      "fireError": "触发 error",
+      "fireInfo": "触发 info",
+      "firePromise": "触发 promise",
+      "successMessage": "保存成功",
+      "errorMessage": "发生错误",
+      "infoMessage": "有新版本可用",
+      "promiseLoading": "正在保存…",
+      "promiseSuccess": "完成",
+      "promiseError": "保存失败"
+    },
+    "dialog": {
+      "title": "Dialog",
+      "description": "Radix Dialog 配合 motion/react 的进入/退出动画，关闭时整棵 portal 子树会被卸载。下面四组覆盖了 Modal 最常见的四种形态。",
+      "cancel": "取消",
+      "basics": {
+        "eyebrow": "基础形态",
+        "title": "基础三件套",
+        "description": "信息提示、表单输入和危险确认 —— 80% 的场景就用这三种。",
+        "openLabel": "打开 Dialog",
+        "openWithFormLabel": "打开表单 Dialog",
+        "openDestructiveLabel": "打开危险操作",
+        "destructiveLead": "此操作无法撤销。",
+        "destructiveDetail": "请确认你已经备份后再继续。",
+        "destructiveConfirm": "确定，删除",
+        "destructiveDoneToast": "项目已删除",
+        "formTitle": "速记",
+        "formDescription": "笔记仅保存在本地，不会发送到任何服务器。",
+        "noteLabel": "笔记",
+        "notePlaceholder": "记录一个想法…",
+        "save": "保存",
+        "savedToast": "笔记已保存"
+      },
+      "sizes": {
+        "eyebrow": "尺寸",
+        "title": "宽度矩阵",
+        "description": "用单个 Tailwind class 覆盖 DialogContent 的默认 max-width。sm 适合确认弹窗，md/lg 适合表单，xl 适合内容型面板。",
+        "body": "当前 Dialog 使用 {{size}} 预设。",
+        "sm": "小 (sm)",
+        "md": "中 (md)",
+        "lg": "大 (lg)",
+        "xl": "超大 (xl)"
+      },
+      "nested": {
+        "eyebrow": "嵌套",
+        "title": "嵌套 Dialog",
+        "description": "在父 Modal 内部再打开一个确认 Modal。Radix 的 portal 栈负责 z-index，AnimatePresence 各自管理退出动画。",
+        "openLabel": "打开设置",
+        "parentTitle": "工作区设置",
+        "parentBody": "在下方选择一个工作区操作 —— 危险操作会在当前 Modal 之上再弹出确认窗。",
+        "confirmTrigger": "删除工作区",
+        "confirmTitle": "确定删除工作区？",
+        "confirmBody": "这将永久删除该工作区以及其中所有内容，无法撤销。",
+        "confirmFinal": "永久删除",
+        "confirmedToast": "工作区已删除"
+      },
+      "fullscreen": {
+        "eyebrow": "布局",
+        "title": "全屏形态",
+        "description": "覆盖整个视口的 Modal，适合 Modal 即页面的移动端场景。去掉居中卡片样式，整张吃满。",
+        "openLabel": "打开全屏",
+        "body": "Modal 占据整个视口。",
+        "bodyDetail": "图片裁剪、多步引导，或任何不希望页面 chrome 抢焦点的流程都适合用这种形态。Header / Footer 分区让主按钮在长内容下也能保持可见。",
+        "confirm": "完成"
+      }
+    },
+    "sheet": {
+      "title": "Sheet",
+      "description": "基于 Radix 的边缘抽屉。Sheet 适合从屏幕边缘滑入，Dialog 适合居中浮层。",
+      "directions": {
+        "eyebrow": "方向",
+        "title": "四个方向",
+        "description": "同一个 Sheet 通过 `side` prop 切换方向。移动端导航多用左右，快速筛选/选择器用底部，状态条用顶部。",
+        "left": "左侧滑入",
+        "right": "右侧滑入",
+        "top": "顶部滑入",
+        "bottom": "底部滑入",
+        "body": "Sheet 从 {{side}} 侧滑入。"
+      },
+      "scroll": {
+        "eyebrow": "高内容",
+        "title": "可滚动内容",
+        "description": "Sheet 内容溢出视口时，SheetBody 单独滚动，Header / Footer 保持固定，主按钮永远不会被滚到屏外。",
+        "openLabel": "打开长内容 Sheet",
+        "header": "长表单",
+        "row": "第 {{n}} 行",
+        "close": "关闭"
+      }
+    },
+    "command": {
+      "title": "命令面板",
+      "description": "基于 cmdk 的键盘优先搜索菜单。包在我们的动画 Dialog 里（CommandDialog）就是经典 ⌘K 体验；也可以单独 inline 渲染 Command 作为静态菜单。",
+      "openLabel": "打开命令面板",
+      "shortcutHint": "在本页任意位置按 ⌘K（或 Ctrl+K）即可打开命令面板。",
+      "placeholder": "输入命令或搜索…",
+      "empty": "无匹配结果。",
+      "groups": {
+        "suggestions": "推荐",
+        "navigation": "导航",
+        "actions": "操作"
+      },
+      "items": {
+        "newTask": "新建任务",
+        "openSettings": "打开设置",
+        "search": "搜索文档",
+        "home": "前往首页",
+        "counter": "前往 Counter",
+        "tasks": "前往 Tasks",
+        "signOut": "退出登录"
+      },
+      "shortcuts": {
+        "newTask": "⌘N",
+        "openSettings": "⌘,",
+        "search": "⌘F"
+      },
+      "ranToast": "执行了：{{label}}"
+    },
+    "signInModal": {
+      "title": "登录 Modal",
+      "description": "auth 模块的 Modal 在 app/providers.tsx 通过 SignInModalMount 全局挂载一次，任何路由都可以通过 useOpenSignInModal() 唤起。下方按钮可分别预览两种模式。",
+      "openSignIn": "打开登录",
+      "openSignUp": "打开注册",
+      "openFromAnywhere": "从任意位置唤起",
+      "mountedNoteTitle": "已挂载",
+      "mountedNoteBody": "Modal 已经在当前应用里挂载好，下方按钮只是调用 auth store 的 openModal()。右上角顶栏的 Sign in 按钮触发的是同一个 Modal。",
+      "modeTabHint": "在 Modal 内的 Tabs 上切换登录 / 注册；预览里 OAuth 走的是 Mock service。"
+    },
+    "motion": {
+      "title": "Motion",
+      "description": "motion/react 与常见 UI 时刻的联动：进入、悬浮、按压、布局变化。在系统里启用 prefers-reduced-motion 即可看到静态降级。",
+      "fadeInLabel": "挂载时淡入",
+      "stackLabel": "子元素错峰",
+      "layoutLabel": "Layout 交换",
+      "layoutSwap": "交换顺序",
+      "tapLabel": "按压目标"
+    },
+    "performance": {
+      "title": "性能",
+      "description": "三个运行时诊断演示：Core Web Vitals、虚拟列表、懒加载 chunk。指标每 2 秒刷新一次。",
+      "webVitals": {
+        "title": "Core Web Vitals",
+        "description": "通过 web-vitals 库实时读取。某些数字在底层 observer 触发前会保持横线 — LCP 需要一次布局，INP 需要一次交互。",
+        "interactHint": "点击页面任意位置以采集一次 INP 样本。",
+        "lcp": "LCP（加载）",
+        "cls": "CLS（视觉稳定性）",
+        "inp": "INP（交互响应）",
+        "fcp": "FCP（首次绘制）",
+        "ttfb": "TTFB（网络）",
+        "memory": "JS 堆内存"
+      },
+      "virtualList": {
+        "title": "虚拟列表",
+        "description": "用 @tanstack/react-virtual 渲染 10,000 行数据。只有视口内的行会被挂载，所以无论数据集多大滚动都很流畅。",
+        "scrollHint": "向下滚动 — 仅可视区域内的行会被实际挂载。",
+        "rowItem": "条目 #{{index}}",
+        "rowBody": "挂载于 {{time}}",
+        "stats": "已渲染 {{visible}} / {{total}} 行"
+      },
+      "lazyLoad": {
+        "title": "懒加载",
+        "description": "触发一次动态 import，观察 Suspense 占位的呈现过程。在 DevTools 里把网络节流到 Slow 3G 可以拉长可见窗口。",
+        "trigger": "加载重型 chunk",
+        "reset": "重置",
+        "loadingLabel": "正在加载重型模块…",
+        "loadedTitle": "模块已加载",
+        "loadedBody": "这个组件位于独立的 JS chunk 里，只有当你请求它时才会下载。",
+        "elapsedLabel": "耗时"
+      }
+    }
+  }
+}

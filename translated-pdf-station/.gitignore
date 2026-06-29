@@ -1,0 +1,9 @@
+node_modules
+dist
+.vite
+.preview-cache
+coverage
+*.tsbuildinfo
+.env
+.env.*
+!.env.example

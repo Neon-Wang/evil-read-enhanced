@@ -1,0 +1,9 @@
+{
+  "title": "Welcome to Eikon App",
+  "subtitle": "An AI-Agent-friendly React starter built on TypeScript, Vite, and Tailwind v4.",
+  "cta": "Get Started",
+  "ctaExamples": "Browse component showcase",
+  "examplesBadge": "Development preview",
+  "examplesTitle": "Component showcase",
+  "examplesDescription": "Open the non-production examples area to inspect UI primitives, interaction patterns, and performance demos."
+}

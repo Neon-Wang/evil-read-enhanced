@@ -1,0 +1,71 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel in-flight runs for the same ref so a follow-up push doesn't pile up.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: typecheck + lint + test + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The quality gate. Order is deliberate:
+      #   - typecheck first (cheapest, catches the most build-breaking class)
+      #   - lint second (cheap, fails fast on AI-friendliness rule breaks)
+      #   - test third (includes __tests__/structure → the structural guard)
+      #   - build last (slowest; only run when everything else is green)
+      - name: Type check
+        run: pnpm run typecheck
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Test (unit + integration + structure)
+        run: pnpm run test
+
+      - name: Build
+        run: pnpm run build
+
+  # Browser-mode E2E is opt-in because it needs a one-time ~120MB
+  # Chromium download. Enable by removing the `if: false` guard and
+  # uncommenting the install / run lines.
+  # browser-e2e:
+  #   name: browser-mode e2e
+  #   runs-on: ubuntu-latest
+  #   if: false
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: pnpm/action-setup@v4
+  #       with: { version: 9 }
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+  #         cache: pnpm
+  #     - run: pnpm install --frozen-lockfile
+  #     - run: pnpm exec playwright install --with-deps chromium
+  #     - run: pnpm run test:browser

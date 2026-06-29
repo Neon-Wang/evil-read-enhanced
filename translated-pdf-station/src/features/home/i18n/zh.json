@@ -1,0 +1,9 @@
+{
+  "title": "欢迎使用 Eikon App",
+  "subtitle": "面向 AI Coding Agent 的 React 启动框架，基于 TypeScript、Vite 与 Tailwind v4。",
+  "cta": "开始使用",
+  "ctaExamples": "浏览组件展柜",
+  "examplesBadge": "开发预览",
+  "examplesTitle": "组件展柜",
+  "examplesDescription": "打开非生产示例区域，查看 UI 基元、交互模式与性能演示。"
+}

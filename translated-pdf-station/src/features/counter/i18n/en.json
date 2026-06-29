@@ -1,0 +1,10 @@
+{
+  "title": "Counter demo",
+  "description": "Demonstrates a feature-first module with Zustand state, i18n and tests.",
+  "current": "Current value: {{value}}",
+  "increment": "Increment",
+  "decrement": "Decrement",
+  "reset": "Reset",
+  "toastIncreased": "Counter increased",
+  "toastReset": "Counter reset to zero"
+}

@@ -1,0 +1,511 @@
+{
+  "meta": {
+    "title": "Component showcase",
+    "subtitle": "Browse and try every UI primitive, interaction pattern, and performance demo that ships with the template.",
+    "devOnlyBadge": "Dev only",
+    "devOnlyNotice": "Preview is available in development only — these routes are excluded from production builds.",
+    "backToIndex": "Back to showcase",
+    "backToApp": "Back to app",
+    "openInNewTab": "Open in new tab",
+    "breadcrumb": "Breadcrumb",
+    "notFound": "Not found",
+    "notFoundTitle": "Component not found",
+    "unknownSection": "That component doesn't exist — pick one from the sidebar."
+  },
+  "overview": {
+    "pick": "Pick a component from the sidebar, or jump in from the grid below.",
+    "featured": "Featured",
+    "tryIt": "Try it",
+    "metrics": {
+      "components": "Components",
+      "categories": "Categories",
+      "layouts": "Layouts"
+    }
+  },
+  "frame": {
+    "previewLabel": "Preview",
+    "copyRoute": "Copy route",
+    "copied": "Copied"
+  },
+  "pager": {
+    "label": "Section navigation",
+    "prev": "Previous",
+    "next": "Next"
+  },
+  "toc": {
+    "label": "Components",
+    "overview": "Overview",
+    "filterPlaceholder": "Filter components…",
+    "filterCount": "{{visible}} of {{total}}",
+    "noResults": "No components match your filter.",
+    "clearFilter": "Clear filter",
+    "uiPrimitives": "UI primitives",
+    "basics": "Basics",
+    "forms": "Forms & data",
+    "feedbackGroup": "Feedback & status",
+    "content": "Content & flair",
+    "patterns": "Interaction patterns",
+    "modals": "Modals & overlays",
+    "performance": "Performance"
+  },
+  "sections": {
+    "title": {
+      "title": "Title",
+      "description": "Heading primitive that decouples the semantic level (which h1–h6 tag) from the visual size, so the document outline stays correct no matter how big the text looks.",
+      "sample2xl": "The quick brown fox",
+      "sampleXl": "The quick brown fox",
+      "sampleLg": "The quick brown fox",
+      "sampleMd": "The quick brown fox",
+      "sampleSm": "The quick brown fox"
+    },
+    "breadcrumb": {
+      "title": "Breadcrumb",
+      "description": "Composable navigation trail. The current page is marked aria-current; separators are decorative so they stay out of the a11y tree.",
+      "home": "Home",
+      "components": "Components",
+      "current": "Breadcrumb"
+    },
+    "progress": {
+      "title": "Progress",
+      "description": "Determinate progress bar with proper role=progressbar / aria-valuenow wiring and three track sizes.",
+      "uploading": "Uploading assets",
+      "processing": "Processing",
+      "almost": "Almost there",
+      "done": "Complete",
+      "sizesLabel": "Sizes"
+    },
+    "kbd": {
+      "title": "Keyboard",
+      "description": "Semantic <kbd> key-cap chips for documenting shortcuts inline or in command-palette hints.",
+      "commandPalette": "Open command palette",
+      "save": "Save",
+      "search": "Search",
+      "close": "Close / dismiss"
+    },
+    "signup": {
+      "title": "Sign-up form",
+      "description": "react-hook-form + zod: required fields, email format, password strength, confirm-password match and a terms gate, with translatable messages.",
+      "username": "Username",
+      "usernamePlaceholder": "jane_doe",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "terms": "I accept the terms and privacy policy",
+      "submit": "Create account",
+      "reset": "Reset",
+      "success": "Account created",
+      "errUsername": "Username must be at least 3 characters.",
+      "errEmail": "Enter a valid email address.",
+      "errPasswordMin": "Password must be at least 8 characters.",
+      "errPasswordWeak": "Password must include a letter and a number.",
+      "errConfirm": "Passwords do not match.",
+      "errTerms": "You must accept the terms to continue."
+    },
+    "profile": {
+      "title": "Profile form",
+      "description": "Mixes inputs with a live-counted textarea, a radio group and a switch — all bound through the same react-hook-form + zod field API.",
+      "name": "Display name",
+      "namePlaceholder": "Jane Doe",
+      "bio": "Bio",
+      "bioPlaceholder": "Tell people a little about yourself…",
+      "bioHint": "Short and sweet.",
+      "visibility": "Profile visibility",
+      "vis_public": "Public — anyone can view",
+      "vis_followers": "Followers only",
+      "vis_private": "Private — only you",
+      "notify": "Email notifications",
+      "notifyHint": "Product updates and security alerts.",
+      "submit": "Save profile",
+      "success": "Profile saved",
+      "errName": "Display name must be at least 2 characters.",
+      "errBio": "Bio must be 160 characters or fewer."
+    },
+    "checkout": {
+      "title": "Checkout form",
+      "description": "A two-column checkout with a Select-bound shipping method and an optional notes field — validated end-to-end with zod.",
+      "name": "Full name",
+      "email": "Email",
+      "address": "Address",
+      "city": "City",
+      "shipping": "Shipping method",
+      "shippingPlaceholder": "Choose a method",
+      "ship_standard": "Standard (3–5 days)",
+      "ship_express": "Express (1–2 days)",
+      "ship_pickup": "Store pickup",
+      "notes": "Order notes (optional)",
+      "notesPlaceholder": "Leave at the front desk…",
+      "submit": "Place order",
+      "success": "Order placed",
+      "errName": "Enter your full name.",
+      "errEmail": "Enter a valid email address.",
+      "errAddress": "Enter a valid address.",
+      "errCity": "Enter your city.",
+      "errShipping": "Select a shipping method.",
+      "errNotes": "Notes must be 280 characters or fewer."
+    },
+    "collapse": {
+      "title": "Collapse",
+      "description": "Zero-dependency accordion. Single-open by default; panels animate height with the grid-rows 0fr→1fr technique and collapse instantly under prefers-reduced-motion.",
+      "q1": "How long does shipping take?",
+      "a1": "Standard shipping arrives in 3–5 business days; express in 1–2.",
+      "q2": "What is the return policy?",
+      "a2": "Return any item within 30 days for a full refund — no questions asked.",
+      "q3": "How do I contact support?",
+      "a3": "Email support@example.com or open the in-app command palette and search “support”."
+    },
+    "divider": {
+      "title": "Divider",
+      "description": "Separator rule in horizontal and vertical orientations. Thickness tracks the design preset's border width; decorative by default so it stays out of the a11y tree.",
+      "heading": "Account",
+      "body": "Manage your profile, billing and connected services.",
+      "blog": "Blog",
+      "docs": "Docs",
+      "source": "Source"
+    },
+    "footer": {
+      "title": "Footer",
+      "description": "Presentational page footer — a responsive link row that stacks on narrow viewports and splits left/right on wide, with a copyright slot pinned to the end.",
+      "about": "About",
+      "docs": "Docs",
+      "privacy": "Privacy",
+      "contact": "Contact",
+      "copyright": "© {{year}} Eikon. All rights reserved."
+    },
+    "table": {
+      "title": "Table",
+      "description": "Styled native table primitives — header, hoverable rows, a status Badge column and a footer total row. The root scrolls horizontally when content overflows.",
+      "caption": "A list of your recent invoices.",
+      "invoice": "Invoice",
+      "status": "Status",
+      "method": "Method",
+      "amount": "Amount",
+      "total": "Total",
+      "statuses": {
+        "paid": "Paid",
+        "pending": "Pending",
+        "overdue": "Overdue"
+      }
+    },
+    "loading": {
+      "title": "Loading",
+      "description": "The Spinner primitive at three sizes, inline inside a Button, and the Skeleton placeholder for content-shaped loading. All freeze under prefers-reduced-motion.",
+      "spinnerLabel": "Spinner sizes",
+      "inlineLabel": "Inline with text",
+      "buttonLabel": "Saving…",
+      "textLabel": "Loading data…",
+      "skeletonLabel": "Skeleton placeholder"
+    },
+    "icon": {
+      "title": "Icon",
+      "description": "The template uses lucide-react as its icon set — consistent stroke width, sized with h-*/w-* utilities, and tinted via the same colour tokens as everything else.",
+      "galleryLabel": "Gallery",
+      "sizesLabel": "Sizes",
+      "colorsLabel": "Semantic tints"
+    },
+    "codeblock": {
+      "title": "CodeBlock",
+      "description": "Code panel with a language label and a copy-to-clipboard button. Dependency-free chrome that adapts to every design preset (no heavy syntax-highlight engine).",
+      "copyLabel": "Copy code"
+    },
+    "typewriter": {
+      "title": "Typewriter",
+      "description": "Cycles through phrases with a typing + deleting animation and a blinking caret. Falls back to static text under prefers-reduced-motion.",
+      "lead": "Build something",
+      "word1": "delightful.",
+      "word2": "accessible.",
+      "word3": "fast."
+    },
+    "cursor": {
+      "title": "Cursor",
+      "description": "Cursor affordances — hover each tile to swap the pointer to the labelled CSS cursor value. Design presets may additionally theme the global cursor.",
+      "hint": "Hover a tile to preview the cursor"
+    },
+    "button": {
+      "title": "Button",
+      "description": "Variant + size matrix with the motion/react micro-interactions baked into the primitive.",
+      "variantsLabel": "Variants",
+      "sizesLabel": "Sizes",
+      "statesLabel": "States",
+      "disabledLabel": "Disabled",
+      "loadingLabel": "Loading",
+      "asChildLabel": "asChild",
+      "asChildHint": "Render as an anchor while keeping button styles",
+      "asChildLink": "Visit Eikon"
+    },
+    "card": {
+      "title": "Card",
+      "description": "Plain, hoverable and structured (header + content + footer) variants. The hoverable variant lifts subtly on mouse enter when prefers-reduced-motion is off.",
+      "plainLabel": "Plain card",
+      "plainBody": "Borders, padding and tokenised surfaces with zero extra config.",
+      "hoverableLabel": "Hoverable",
+      "hoverableBody": "Hover me — the whole card lifts a few pixels.",
+      "structuredLabel": "Structured",
+      "structuredTitle": "Build with composition",
+      "structuredBody": "Compose CardHeader + CardContent + CardFooter to keep typography consistent.",
+      "structuredAction": "Acknowledge"
+    },
+    "tabs": {
+      "title": "Tabs",
+      "description": "Radix Tabs with the active trigger styled via data-[state=active]. Three panels share the same trigger row.",
+      "accountTab": "Account",
+      "passwordTab": "Password",
+      "preferencesTab": "Preferences",
+      "accountBody": "Profile, billing, and connected services live here.",
+      "passwordBody": "Rotate credentials and review active sessions.",
+      "preferencesBody": "Notifications, language, theme and accessibility."
+    },
+    "form": {
+      "title": "Form controls",
+      "description": "Input, Textarea, Select, Checkbox, Radio and Switch — the full input vocabulary, every control painted from the same design tokens.",
+      "textLabel": "Text fields",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "noteLabel": "Note",
+      "notePlaceholder": "Type a short note…",
+      "selectLabel": "Select",
+      "selectPlaceholder": "Pick a fruit",
+      "optApple": "Apple",
+      "optBanana": "Banana",
+      "optCherry": "Cherry",
+      "toggleLabel": "Checkbox & switch",
+      "termsLabel": "I agree to the terms",
+      "notifyLabel": "Email notifications",
+      "radioLabel": "Radio group",
+      "shipStandard": "Standard",
+      "shipExpress": "Express",
+      "shipPickup": "Pickup"
+    },
+    "data": {
+      "title": "Data display",
+      "description": "Read-only display primitives: status Badges, Avatars with an initials fallback, and Skeleton loading placeholders.",
+      "badgesLabel": "Badges",
+      "badgeDefault": "Default",
+      "badgeSecondary": "Secondary",
+      "badgeOutline": "Outline",
+      "badgeSuccess": "Success",
+      "badgeWarning": "Warning",
+      "badgeInfo": "Info",
+      "badgeDestructive": "Destructive",
+      "avatarsLabel": "Avatars",
+      "avatarAlt": "Avatar",
+      "skeletonLabel": "Skeleton"
+    },
+    "feedback": {
+      "title": "Feedback & overlays",
+      "description": "Inline Alert banners across the semantic colour set, plus a Tooltip and a Popover for lightweight, anchored overlays.",
+      "alertsLabel": "Alerts",
+      "successTitle": "Saved",
+      "successBody": "Your changes were saved successfully.",
+      "warningTitle": "Heads up",
+      "warningBody": "Your trial ends in three days.",
+      "infoTitle": "New build",
+      "infoBody": "A new version is available — reload to update.",
+      "overlaysLabel": "Tooltip & popover",
+      "tooltipTrigger": "Hover me",
+      "tooltipBody": "Tooltips invert the surface so they read as a callout.",
+      "popoverTrigger": "Open popover",
+      "popoverTitle": "Quick settings",
+      "popoverBody": "Popovers anchor to their trigger and share the command-panel surface."
+    },
+    "theme": {
+      "title": "Theme tokens",
+      "description": "Every primitive paints with CSS custom properties exposed under var(--color-*). Switch the theme from the header to see all tokens flip in lock-step.",
+      "currentMode": "Current mode",
+      "preferred": "Preference",
+      "resolved": "Resolved",
+      "swatchesLabel": "Token swatches"
+    },
+    "i18n": {
+      "title": "i18n",
+      "description": "Feature copy lives under src/features/<name>/i18n/<lng>.json. Each namespace is its own lazy chunk. Switch the language to see the whole tree re-translate.",
+      "currentLanguage": "Active language",
+      "tryItHint": "Hint: open the language switcher in the header.",
+      "sampleHeading": "Sample copy",
+      "sampleBody": "This block reads from the examples namespace and updates instantly when you switch languages."
+    },
+    "animation": {
+      "title": "Animation primitives",
+      "description": "Token-controlled timing for spinners, pulses and entrance animations. All respect prefers-reduced-motion.",
+      "spinLabel": "Spin",
+      "pulseLabel": "Pulse",
+      "bounceLabel": "Bounce",
+      "hoverHint": "Hover the box to trigger the spring lift."
+    }
+  },
+  "pages": {
+    "toaster": {
+      "title": "Toast",
+      "description": "Design-driven Sonner toaster with configurable position. The toast styling follows the active design preset automatically; switch positions to preview placement.",
+      "currentLabel": "Position",
+      "fireSuccess": "Fire success",
+      "fireError": "Fire error",
+      "fireInfo": "Fire info",
+      "firePromise": "Fire promise",
+      "successMessage": "Saved successfully",
+      "errorMessage": "Something went wrong",
+      "infoMessage": "New build available",
+      "promiseLoading": "Saving…",
+      "promiseSuccess": "All set",
+      "promiseError": "Save failed"
+    },
+    "dialog": {
+      "title": "Dialog",
+      "description": "Radix Dialog with motion/react enter/exit transitions, conditionally portalled so the subtree fully unmounts on close. Four flavours below cover every common Modal shape.",
+      "cancel": "Cancel",
+      "basics": {
+        "eyebrow": "Foundations",
+        "title": "Basic flavours",
+        "description": "Informational, form-style and destructive-confirmation Modals — the three shapes you reach for 80% of the time.",
+        "openLabel": "Open dialog",
+        "openWithFormLabel": "Open form dialog",
+        "openDestructiveLabel": "Open destructive",
+        "destructiveLead": "This action cannot be undone.",
+        "destructiveDetail": "Make sure you have a backup before you proceed.",
+        "destructiveConfirm": "Yes, delete",
+        "destructiveDoneToast": "Item deleted",
+        "formTitle": "Quick note",
+        "formDescription": "Notes are stored locally and never sent anywhere.",
+        "noteLabel": "Note",
+        "notePlaceholder": "Capture an idea…",
+        "save": "Save",
+        "savedToast": "Note saved"
+      },
+      "sizes": {
+        "eyebrow": "Sizes",
+        "title": "Width matrix",
+        "description": "Override DialogContent's default max-width with a single Tailwind class. Use sm for confirmation prompts, md/lg for forms, xl for content surfaces.",
+        "body": "This dialog uses the {{size}} preset.",
+        "sm": "Small (sm)",
+        "md": "Medium (md)",
+        "lg": "Large (lg)",
+        "xl": "Extra large (xl)"
+      },
+      "nested": {
+        "eyebrow": "Stacked",
+        "title": "Nested dialogs",
+        "description": "A confirmation Modal opened from inside another Modal. Radix's portal stack handles z-index; AnimatePresence handles independent exit animations.",
+        "openLabel": "Open settings",
+        "parentTitle": "Workspace settings",
+        "parentBody": "Choose a workspace action below — destructive actions open a confirmation Modal on top of this one.",
+        "confirmTrigger": "Delete workspace",
+        "confirmTitle": "Delete workspace?",
+        "confirmBody": "This permanently removes the workspace and every artefact inside it. There is no undo.",
+        "confirmFinal": "Delete forever",
+        "confirmedToast": "Workspace deleted"
+      },
+      "fullscreen": {
+        "eyebrow": "Layout",
+        "title": "Fullscreen flavour",
+        "description": "Viewport-filling Modal for mobile shells where the modal IS the page. Drops the centred-card chrome and runs edge-to-edge.",
+        "openLabel": "Open fullscreen",
+        "body": "The Modal owns the whole viewport.",
+        "bodyDetail": "Use this shape for image cropping, multi-step wizards, or any flow where chrome would steal attention. The header / footer split keeps the action bar reachable on tall mobile screens.",
+        "confirm": "Done"
+      }
+    },
+    "sheet": {
+      "title": "Sheet",
+      "description": "Side-anchored drawers built on the same Radix primitives as Dialog but with edge-locked motion. Use Sheet when the surface should slide in from a screen edge — Dialog when it should centre over the page.",
+      "directions": {
+        "eyebrow": "Directions",
+        "title": "Four edges",
+        "description": "The same Sheet primitive accepts any side via the `side` prop. Mobile drawers usually anchor left or right; quick filters / pickers anchor bottom; status panels anchor top.",
+        "left": "From left",
+        "right": "From right",
+        "top": "From top",
+        "bottom": "From bottom",
+        "body": "Sheet anchored to the {{side}} edge."
+      },
+      "scroll": {
+        "eyebrow": "Tall content",
+        "title": "Scrollable body",
+        "description": "When the Sheet contents overflow the viewport, the SheetBody scrolls independently — the header / footer stay pinned so primary actions never sit below the fold.",
+        "openLabel": "Open long sheet",
+        "header": "Long form",
+        "row": "Row #{{n}}",
+        "close": "Close"
+      }
+    },
+    "command": {
+      "title": "Command palette",
+      "description": "Searchable, keyboard-first menu built on cmdk. Wrap it in our animated Dialog (CommandDialog) for the classic ⌘K experience, or render Command inline for static menus.",
+      "openLabel": "Open palette",
+      "shortcutHint": "Press ⌘K (or Ctrl+K) anywhere on this page to open the palette.",
+      "placeholder": "Type a command or search…",
+      "empty": "No results found.",
+      "groups": {
+        "suggestions": "Suggestions",
+        "navigation": "Navigation",
+        "actions": "Actions"
+      },
+      "items": {
+        "newTask": "Create new task",
+        "openSettings": "Open settings",
+        "search": "Search documentation",
+        "home": "Go to Home",
+        "counter": "Go to Counter",
+        "tasks": "Go to Tasks",
+        "signOut": "Sign out"
+      },
+      "shortcuts": {
+        "newTask": "⌘N",
+        "openSettings": "⌘,",
+        "search": "⌘F"
+      },
+      "ranToast": "Ran: {{label}}"
+    },
+    "signInModal": {
+      "title": "Sign-in modal",
+      "description": "The auth feature's modal is mounted once at the provider level (SignInModalMount in app/providers.tsx) and openable from any route via useOpenSignInModal(). Trigger it below to preview both modes.",
+      "openSignIn": "Open Sign in",
+      "openSignUp": "Open Sign up",
+      "openFromAnywhere": "Open from anywhere",
+      "mountedNoteTitle": "Already mounted",
+      "mountedNoteBody": "The Modal is already live in this app — the buttons below just call openModal() on the auth store. Look for the topbar Sign in button on the right to see the same trigger inline.",
+      "modeTabHint": "Use the tabs inside the modal to switch between sign in and sign up; OAuth providers are wired to the Mock service in this preview."
+    },
+    "motion": {
+      "title": "Motion",
+      "description": "motion/react primitives wired to common UI moments — entrance, hover, tap, layout. Toggle prefers-reduced-motion in your OS to see the static fallbacks.",
+      "fadeInLabel": "Fade-in on mount",
+      "stackLabel": "Staggered children",
+      "layoutLabel": "Layout swap",
+      "layoutSwap": "Swap order",
+      "tapLabel": "Tap target"
+    },
+    "performance": {
+      "title": "Performance",
+      "description": "Three runtime diagnostics demos: Core Web Vitals, virtualised lists, and lazy-loaded chunks. Numbers refresh every two seconds.",
+      "webVitals": {
+        "title": "Core Web Vitals",
+        "description": "Live readings from the web-vitals library. Numbers may be — until the underlying observer fires (LCP needs a layout, INP needs an interaction).",
+        "interactHint": "Click anywhere on the page to register an INP sample.",
+        "lcp": "LCP (loading)",
+        "cls": "CLS (visual stability)",
+        "inp": "INP (interaction)",
+        "fcp": "FCP (first paint)",
+        "ttfb": "TTFB (network)",
+        "memory": "JS heap"
+      },
+      "virtualList": {
+        "title": "Virtual list",
+        "description": "10,000 rows rendered by @tanstack/react-virtual. Only the rows in the viewport are mounted, so scrolling stays smooth regardless of dataset size.",
+        "scrollHint": "Scroll the list — only visible rows are mounted.",
+        "rowItem": "Item #{{index}}",
+        "rowBody": "Mounted at {{time}}",
+        "stats": "Rendered {{visible}} of {{total}} rows"
+      },
+      "lazyLoad": {
+        "title": "Lazy load",
+        "description": "Trigger a dynamic import and watch the Suspense fallback while the chunk is fetched. Slow Network tab in DevTools to extend the visible window.",
+        "trigger": "Load heavy chunk",
+        "reset": "Reset",
+        "loadingLabel": "Loading the heavy module…",
+        "loadedTitle": "Module loaded",
+        "loadedBody": "This component lives in its own JS chunk; it only downloaded once you asked for it.",
+        "elapsedLabel": "Elapsed"
+      }
+    }
+  }
+}

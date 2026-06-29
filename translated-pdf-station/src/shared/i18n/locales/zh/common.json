@@ -1,0 +1,32 @@
+{
+  "nav": {
+    "home": "首页",
+    "counter": "计数器",
+    "examples": "示例",
+    "tasks": "任务",
+    "menu": "打开导航",
+    "menuDescription": "应用的主导航",
+    "primary": "主导航",
+    "sectionLabel": "导航",
+    "compose": "新建任务"
+  },
+  "actions": {
+    "toggleTheme": "切换主题",
+    "switchLanguage": "切换语言"
+  },
+  "theme": {
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统"
+  },
+  "language": {
+    "en": "English",
+    "zh": "中文"
+  },
+  "notFound": {
+    "code": "404",
+    "title": "页面未找到",
+    "description": "你访问的页面不存在或已被移动。",
+    "back": "返回首页"
+  }
+}

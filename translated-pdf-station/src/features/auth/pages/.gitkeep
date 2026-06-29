@@ -1,0 +1,5 @@
+Reserved for future auth-owned pages (e.g. /auth/callback, account profile).
+The Auth feature today exposes itself as a global modal mounted at provider
+scope (`<SignInModalMount />`), so it owns no routed pages — but the folder
+exists to satisfy the universal feature-shape contract and to give future
+auth pages an obvious home.

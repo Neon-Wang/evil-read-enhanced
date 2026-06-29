@@ -1,0 +1,49 @@
+{
+  "layout": {
+    "notice": "本示例使用模拟延迟，刷新页面后内存数据会重置。",
+    "mode": "服务模式：",
+    "modeMock": "Mock",
+    "modeSupabase": "Supabase"
+  },
+  "status": {
+    "pending": "待处理",
+    "in_progress": "进行中",
+    "completed": "已完成"
+  },
+  "index": {
+    "title": "任务列表",
+    "new": "新建任务",
+    "loading": "加载任务中…",
+    "empty": "暂无任务，先创建第一个吧。"
+  },
+  "new": {
+    "title": "新建任务",
+    "back": "返回列表",
+    "created": "任务已创建",
+    "error": "创建任务失败",
+    "form": {
+      "title": "标题",
+      "description": "描述",
+      "submit": "创建任务",
+      "submitting": "创建中…"
+    }
+  },
+  "details": {
+    "title": "任务详情",
+    "back": "返回列表",
+    "loading": "加载任务中…",
+    "notFound": "找不到任务",
+    "notFoundDescription": "可能已被删除，或链接已失效。",
+    "createdAt": "创建时间",
+    "id": "ID"
+  },
+  "delete": {
+    "button": "删除任务",
+    "confirmTitle": "确定删除此任务？",
+    "confirmBody": "此操作无法撤销，「{{title}}」将被永久删除。",
+    "cancel": "取消",
+    "confirm": "删除",
+    "doneToast": "任务已删除",
+    "errorToast": "删除任务失败"
+  }
+}

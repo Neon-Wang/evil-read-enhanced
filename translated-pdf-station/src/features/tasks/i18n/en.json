@@ -1,0 +1,49 @@
+{
+  "layout": {
+    "notice": "This demo simulates network latency. State resets on a full refresh.",
+    "mode": "Service mode:",
+    "modeMock": "Mock",
+    "modeSupabase": "Supabase"
+  },
+  "status": {
+    "pending": "Pending",
+    "in_progress": "In progress",
+    "completed": "Completed"
+  },
+  "index": {
+    "title": "Tasks",
+    "new": "New task",
+    "loading": "Loading tasks…",
+    "empty": "No tasks yet — create the first one."
+  },
+  "new": {
+    "title": "New task",
+    "back": "Back to list",
+    "created": "Task created",
+    "error": "Failed to create task",
+    "form": {
+      "title": "Title",
+      "description": "Description",
+      "submit": "Create task",
+      "submitting": "Creating…"
+    }
+  },
+  "details": {
+    "title": "Task details",
+    "back": "Back to list",
+    "loading": "Loading task…",
+    "notFound": "Task not found",
+    "notFoundDescription": "It may have been deleted or the link is stale.",
+    "createdAt": "Created",
+    "id": "ID"
+  },
+  "delete": {
+    "button": "Delete task",
+    "confirmTitle": "Delete this task?",
+    "confirmBody": "This action cannot be undone. \"{{title}}\" will be permanently removed.",
+    "cancel": "Cancel",
+    "confirm": "Delete",
+    "doneToast": "Task deleted",
+    "errorToast": "Failed to delete task"
+  }
+}

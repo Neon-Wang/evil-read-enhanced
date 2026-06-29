@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en" class="design-linear" data-design="linear" data-layout="sidebar">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <!--
+      `viewport-fit=cover` is universal: desktop browsers ignore the
+      keyword, mobile browsers use it to let `env(safe-area-inset-*)`
+      resolve to non-zero values on devices with rounded corners /
+      notches / home-indicator bars (iOS Safari, Android with display
+      cutouts). The mobile layouts (MobileDrawer / BottomTabs /
+      BottomTabsFab) — and the platform-agnostic Centered layout
+      when scaffolded for `--platform mobile` — read these insets
+      to pad chrome away from physical obstructions.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="description" content="Eikon React starter" />
+    <meta name="theme-color" content="#0a0a0a" />
+    <title>Eikon App</title>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme');
+          var resolved = stored
+            ? (function (t) {
+                try {
+                  return JSON.parse(t);
+                } catch (e) {
+                  return t;
+                }
+              })(stored)
+            : 'system';
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark = resolved === 'dark' || (resolved !== 'light' && prefersDark);
+          var root = document.documentElement;
+          root.classList.remove('light', 'dark');
+          root.classList.add(isDark ? 'dark' : 'light');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-background text-foreground antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
