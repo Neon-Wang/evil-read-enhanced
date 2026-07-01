@@ -114,8 +114,9 @@ Plain files such as `credentials.local.json`, `credentials.plain.json`, or copie
    .\.venv\Scripts\pip.exe install -r requirements.txt
    ```
 
-3. Provide either `EVILREAD_WORKSPACE_REMOTE` or an encrypted credential envelope with `workspace_remote`, `git_username`, and `git_token`.
-4. Pull the workspace mirror:
+3. Install and verify the Zotero plugin environment from `docs/zotero-environment.md`. The run is not production-ready while `tools\zotero_env_audit.py` reports `missing_required_plugins`.
+4. Provide either `EVILREAD_WORKSPACE_REMOTE` or an encrypted credential envelope with `workspace_remote`, `git_username`, and `git_token`.
+5. Pull the workspace mirror:
 
    ```powershell
    $env:EVILREAD_RELAY_PASSPHRASE = "<same-passphrase>"
@@ -124,7 +125,18 @@ Plain files such as `credentials.local.json`, `credentials.plain.json`, or copie
      -BeforeStartMyDay
    ```
 
-5. Open `deploy/code-server/evilread.code-workspace` or run `start-my-day`.
+6. Open `deploy/code-server/evilread.code-workspace` or run `start-my-day`.
+
+## Zotero Plugin Parity
+
+The Git relay only moves the EvilRead workspace mirror. It does not reproduce the local Zotero runtime. Every computer that runs `start-my-day` must independently satisfy the Zotero environment contract:
+
+```powershell
+.\.venv\Scripts\python.exe tools\zotero_env_audit.py `
+  --plugin-source "C:\Users\O2\Documents\Zotero-preparation\zotero-migration-extracted\zotero-migration-20260620-165339\plugins-xpi"
+```
+
+Required plugin IDs are documented in `docs/zotero-environment.md`. Do not proceed with production import, translation, RunJS reconciliation, or closure audit until the audit returns `status: ok`.
 
 ## Start My Day Integration
 

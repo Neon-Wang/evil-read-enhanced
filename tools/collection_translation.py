@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import shutil
 import sys
+import textwrap
 import urllib.error
 import urllib.request
 import urllib.parse
@@ -158,6 +159,81 @@ def download_pdf2zh_output(
     return _download_file(f"{server_url.rstrip('/')}/translatedFile/{quoted}", destination, timeout_seconds)
 
 
+def extracted_text_preview(source_pdf: Path, limit: int = 6000) -> str:
+    try:
+        import fitz
+    except ImportError:
+        return ""
+    try:
+        with fitz.open(source_pdf) as document:
+            chunks: list[str] = []
+            for page in document:
+                chunks.append(page.get_text("text"))
+                if sum(len(chunk) for chunk in chunks) >= limit:
+                    break
+    except Exception:
+        return ""
+    return "\n".join(chunks).strip()[:limit]
+
+
+def cjk_font_name() -> str:
+    try:
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+    except ImportError:
+        return "Helvetica"
+    for font_path in (Path(r"C:\Windows\Fonts\msyh.ttc"), Path(r"C:\Windows\Fonts\simsun.ttc")):
+        if font_path.exists():
+            try:
+                pdfmetrics.registerFont(TTFont("EvilReadCJK", str(font_path)))
+                return "EvilReadCJK"
+            except Exception:
+                continue
+    return "Helvetica"
+
+
+def write_fallback_translation_pdf(source_pdf: Path, item_key: str, destination: Path) -> bool:
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.pdfgen import canvas
+    except ImportError:
+        return False
+    preview = extracted_text_preview(source_pdf)
+    if not preview:
+        preview = "PDF text extraction did not return readable text."
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    pdf = canvas.Canvas(str(destination), pagesize=A4)
+    width, height = A4
+    font_name = cjk_font_name()
+    x = 48
+    y = height - 54
+    line_height = 15
+    lines = [
+        "EvilRead 中文 PDF fallback",
+        "",
+        f"Zotero key: {item_key}",
+        f"Source PDF: {source_pdf.name}",
+        "",
+        "说明：自动 PDF2ZH 翻译服务未能处理该 PDF。此文件用于生产流程闭环和增量包审计，",
+        "不代表完整机器翻译；下方附源 PDF 可抽取文本预览，方便后续人工处理。",
+        "",
+        "Extracted source text preview:",
+        "",
+    ]
+    for paragraph in preview.splitlines():
+        wrapped = textwrap.wrap(paragraph, width=88) or [""]
+        lines.extend(wrapped)
+    for line in lines:
+        if y < 48:
+            pdf.showPage()
+            y = height - 54
+        pdf.setFont(font_name, 10 if line else 8)
+        pdf.drawString(x, y, line[:180])
+        y -= line_height
+    pdf.save()
+    return destination.exists() and destination.stat().st_size > 0
+
+
 def ensure_translated_pdf(
     source_pdf: Path,
     item_key: str,
@@ -217,4 +293,6 @@ def ensure_translated_pdf(
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(matches[0], destination)
         return {"status": "copied", "path": str(destination), "source": str(matches[0])}
+    if write_fallback_translation_pdf(source_pdf, item_key, destination):
+        return {"status": "fallback", "path": str(destination), "source": str(source_pdf)}
     return {"status": "missing", "path": str(destination)}

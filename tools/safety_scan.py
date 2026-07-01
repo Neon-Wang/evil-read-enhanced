@@ -27,6 +27,15 @@ SECRET_PATTERNS = [
     re.compile(r"\bpassword\s*[:=]\s*['\"]?[^'\"\s]+", re.IGNORECASE),
 ]
 
+BINARY_EXTENSIONS = {
+    ".pdf",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".zip",
+}
+
 
 def iter_files(paths: Iterable[Path]) -> Iterable[Path]:
     for path in paths:
@@ -56,6 +65,8 @@ def scan_file(path: Path) -> list[str]:
         return findings
     if is_blocked_name(path):
         findings.append(f"{path}: blocked filename")
+        return findings
+    if path.suffix.lower() in BINARY_EXTENSIONS:
         return findings
     try:
         content = path.read_text(encoding="utf-8", errors="ignore")

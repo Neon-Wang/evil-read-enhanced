@@ -45,7 +45,19 @@ from paper_query.config import load_config as load_paper_query_config
 from paper_query.orchestrator import build_request as build_paper_query_request
 from paper_query.orchestrator import query_papers
 
-WORKSPACE_SYNC_PATHS = ["collections", "zotero", "vault/10_Daily", "vault/20_Research", "vault/30_Inbox", "vault/99_System"]
+WORKSPACE_SYNC_PATHS = [
+    "collections",
+    "downloads",
+    "zotero",
+    "vault/10_Daily",
+    "vault/20_Research",
+    "vault/30_Inbox",
+    "vault/99_System",
+    "vault/.obsidian/app.json",
+    "vault/.obsidian/appearance.json",
+    "vault/.obsidian/core-plugins.json",
+    "vault/.obsidian/graph.json",
+]
 REQUIRED_EMAIL_ENV_VARS = ["CAT_EMAIL_PROVIDER"]
 EMAIL_PROVIDER_REQUIRED_ENV = {
     "cf_relay": ["CAT_CF_RELAY_URL", "CAT_CF_RELAY_SECRET", "CAT_FROM_EMAIL"],
@@ -205,6 +217,34 @@ def load_agent_decisions(path: Path | None) -> dict[str, Any]:
     return payload
 
 
+def default_agent_decisions() -> dict[str, Any]:
+    return {
+        "overview": "",
+        "reading_suggestions": [],
+        "papers": {},
+        "research_notes": {},
+        "comment_answers": {},
+        "preference_updates": {"interests": [], "avoids": []},
+    }
+
+
+def ensure_agent_decisions(
+    workspace_root: Path,
+    run_date: str,
+    explicit_path: Path | None,
+    send_email: bool,
+) -> tuple[dict[str, Any], str]:
+    if explicit_path:
+        return load_agent_decisions(explicit_path), str(explicit_path)
+    if not send_email:
+        return {}, ""
+    output = workspace_root / "vault" / "99_System" / "Indexes" / f"start_my_day_agent_decisions_{run_date}.json"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    decisions = default_agent_decisions()
+    output.write_text(json.dumps(decisions, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return decisions, str(output)
+
+
 def write_agent_input_bundle(
     workspace_root: Path,
     run_date: str,
@@ -332,13 +372,21 @@ def reconcile_zotero_native(
     attachment_js = script_dir / f"reconcile_attachments_{run_date}.js"
     collection_js.write_text(collection_script, encoding="utf-8")
     attachment_js.write_text(attachment_script, encoding="utf-8")
+    ui_error = ""
     if execute:
-        zotero_runjs_collections.execute_in_runjs_window(collection_script, title_re=".*JavaScript.*|Zotero", wait_seconds=8.0)
-        zotero_runjs_collections.execute_in_runjs_window(attachment_script, title_re=".*JavaScript.*|Zotero", wait_seconds=15.0)
-        status = "executed"
+        try:
+            zotero_runjs_collections.execute_in_runjs_window(collection_script, title_re=".*JavaScript.*|Zotero", wait_seconds=8.0)
+            zotero_runjs_collections.execute_in_runjs_window(attachment_script, title_re=".*JavaScript.*|Zotero", wait_seconds=15.0)
+            status = "executed"
+        except Exception as exc:
+            message = str(exc)
+            if not any(marker in message for marker in ("Run JavaScript", "pywinauto", "SetCursorPos")):
+                raise
+            status = "scripted-ui-unavailable"
+            ui_error = message
     else:
         status = "scripted"
-    return {
+    result = {
         "status": status,
         "confirmed_keys": confirmed_keys,
         "exploration_keys": exploration_keys,
@@ -347,6 +395,9 @@ def reconcile_zotero_native(
         "collection_script": str(collection_js),
         "attachment_script": str(attachment_js),
     }
+    if ui_error:
+        result["error"] = ui_error
+    return result
 
 
 def ingest_discovered_papers(
@@ -608,7 +659,12 @@ def run_loop(
     else:
         pre_start_commit = ""
     zotero_status = ensure_zotero_available(zotero_api)
-    agent_decisions = load_agent_decisions(agent_decisions_path)
+    agent_decisions, agent_decisions_artifact = ensure_agent_decisions(
+        workspace_root,
+        run_date,
+        agent_decisions_path,
+        send_email,
+    )
     previous_note = latest_previous_daily(vault_root, run_date)
     comments = {"interests": [], "avoids": [], "deepen": [], "questions": [], "requests": []}
     reflection: dict[str, Any] | None = None
@@ -741,6 +797,7 @@ def run_loop(
         "reflection": reflection,
         "comments": comment_result,
         "discovery": discovery_result,
+        "agent_decisions": agent_decisions_artifact,
         "agent_input_bundle": str(agent_input_bundle),
         "collections": collections_result,
         "zotero_sync": zotero_result,
@@ -761,10 +818,16 @@ def close_chrome_processes() -> None:
             "powershell",
             "-NoProfile",
             "-Command",
-            "Stop-Process -Name chrome -Force -ErrorAction SilentlyContinue",
+            (
+                "$chrome = Get-CimInstance Win32_Process -Filter \"name = 'chrome.exe'\" "
+                "-ErrorAction SilentlyContinue; "
+                "$chrome | Where-Object { "
+                "$_.CommandLine -match 'remote-debugging|--user-data-dir=.*(Codex|codex|Temp|tmp|playwright|evilread|chrome-automation)' "
+                "} | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
+            ),
         ]
     else:
-        command = ["pkill", "-x", "chrome"]
+        command = ["pkill", "-f", "chrome.*(remote-debugging|--user-data-dir=.*(codex|tmp|playwright|evilread|chrome-automation))"]
     try:
         subprocess.run(command, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
     except Exception as exc:

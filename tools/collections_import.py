@@ -75,6 +75,34 @@ def scan_root_pdfs(collections_dir: Path, manifest: dict[str, Any]) -> tuple[lis
     return requests, []
 
 
+def recover_same_day_archived_requests(manifest: dict[str, Any], run_date: str, existing_hashes: set[str]) -> list[dict[str, Any]]:
+    recovered: list[dict[str, Any]] = []
+    seen = manifest.get("items_by_hash", {})
+    if not isinstance(seen, dict):
+        return recovered
+    for file_hash, item in sorted(seen.items()):
+        if file_hash in existing_hashes or not isinstance(item, dict):
+            continue
+        if str(item.get("imported_at") or "") != run_date:
+            continue
+        archived_path = Path(str(item.get("archived_path") or ""))
+        zotero_key = str(item.get("zotero_key") or "").strip()
+        if not archived_path.exists() or not zotero_key:
+            continue
+        recovered.append(
+            {
+                "path": str(archived_path),
+                "name": archived_path.name,
+                "sha256": file_hash,
+                "previously_imported": True,
+                "archived_replay": True,
+                "zotero_key": zotero_key,
+                "title": item.get("title", ""),
+            }
+        )
+    return recovered
+
+
 def js_string(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
@@ -326,6 +354,7 @@ def import_collection_pdfs(
     paths = workspace_paths(workspace_root)
     manifest = load_manifest(paths["manifest"])
     requests, skipped = scan_root_pdfs(paths["collections"], manifest)
+    requests.extend(recover_same_day_archived_requests(manifest, run_date, {request["sha256"] for request in requests}))
     result: dict[str, Any] = {"date": run_date, "scanned": len(requests), "imported": [], "failed": [], "skipped": skipped}
     if requests and execute:
         already_imported = [request for request in requests if request.get("previously_imported")]
@@ -353,7 +382,7 @@ def import_collection_pdfs(
         for request in requests:
             runner_result = by_hash.get(request["sha256"], {"status": "failed", "error": "missing runner result"})
             if is_pending_result(runner_result):
-                archive_path = archive_file(Path(request["path"]), paths["fails"] / run_date, request["sha256"])
+                archive_path = Path(str(request["path"])) if request.get("archived_replay") else archive_file(Path(request["path"]), paths["fails"] / run_date, request["sha256"])
                 result["failed"].append(
                     {
                         **request,
@@ -365,7 +394,7 @@ def import_collection_pdfs(
                 continue
             archive_bucket = "imported" if runner_result.get("status") == "imported" else "failed"
             target_root = paths["imported"] if archive_bucket == "imported" else paths["fails"]
-            archive_path = archive_file(Path(request["path"]), target_root / run_date, request["sha256"])
+            archive_path = Path(str(request["path"])) if request.get("archived_replay") else archive_file(Path(request["path"]), target_root / run_date, request["sha256"])
             entry = {**request, **runner_result, "archived_path": str(archive_path)}
             if archive_bucket == "imported":
                 manifest["items_by_hash"][request["sha256"]] = {

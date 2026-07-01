@@ -32,6 +32,7 @@ import zotero_closure_audit
 import zotero_runjs_dedupe
 import zotero_ingest
 import zotero_sync
+import zotero_env_audit
 import relay_credentials
 import git_tls_relay
 
@@ -45,6 +46,16 @@ def test_safety_scan_rejects_secret_text() -> None:
 
     assert findings
     assert any("secret-like content" in finding for finding in findings)
+
+
+def test_safety_scan_skips_binary_pdf_content() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        pdf_file = Path(temp_dir) / "paper.pdf"
+        pdf_file.write_bytes(b"%PDF-1.4\nrandom sk-notarealsecret1234567890 bytes\n")
+
+        findings = safety_scan.scan_paths([pdf_file])
+
+    assert findings == []
 
 
 def test_reflect_updates_preferences_and_writes_diff() -> None:
@@ -993,6 +1004,54 @@ def test_collections_import_refreshes_translation_for_already_imported_pdf() -> 
     translated.assert_called_once()
 
 
+def test_collections_import_recovers_same_day_archived_pdf_on_rerun() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        workspace_root = Path(temp_dir)
+        collections_dir = workspace_root / "collections"
+        imported_dir = collections_dir / "imported" / "2026-06-27"
+        item_dir = workspace_root / "zotero" / "library" / "items"
+        imported_dir.mkdir(parents=True)
+        item_dir.mkdir(parents=True)
+        archived_pdf = imported_dir / "Already Archived.pdf"
+        archived_pdf.write_bytes(b"%PDF-1.4\narchived\n")
+        file_hash = collections_import.sha256_file(archived_pdf)
+        manifest = {
+            "items_by_hash": {
+                file_hash: {
+                    "zotero_key": "COLLARCHIVED",
+                    "title": "Already Archived",
+                    "imported_at": "2026-06-27",
+                    "archived_path": str(archived_pdf),
+                }
+            }
+        }
+        (collections_dir / "logs").mkdir(parents=True)
+        (collections_dir / "logs" / "import_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        (item_dir / "COLLARCHIVED.pdf").write_bytes(b"%PDF-1.4\nmirror\n")
+
+        with patch(
+            "collections_import.ensure_translated_pdf",
+            return_value={"status": "exists", "path": str(item_dir / "COLLARCHIVED.zh.pdf")},
+        ) as translated:
+            result = collections_import.import_collection_pdfs(
+                workspace_root=workspace_root,
+                run_date="2026-06-27",
+                execute=True,
+                run_import_script=lambda requests, script: [],
+            )
+
+        recovered_path_exists = archived_pdf.exists()
+        renamed_duplicates = list(imported_dir.glob("Already Archived-*.pdf"))
+
+    assert result["scanned"] == 1
+    assert result["imported"][0]["zotero_key"] == "COLLARCHIVED"
+    assert result["imported"][0]["archived_replay"] is True
+    assert result["imported"][0]["archived_path"] == str(archived_pdf)
+    assert recovered_path_exists
+    assert renamed_duplicates == []
+    translated.assert_called_once()
+
+
 def test_collection_translation_downloads_filelist_output_when_not_on_disk() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         root = Path(temp_dir)
@@ -1024,6 +1083,24 @@ def test_collection_translation_downloads_filelist_output_when_not_on_disk() -> 
     assert result["status"] == "generated"
     assert destination_exists
     assert destination_head == b"%PDF"
+
+
+def test_collection_translation_writes_fallback_pdf_when_pdf2zh_fails() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        source = root / "ITEM.pdf"
+        destination = root / "ITEM.zh.pdf"
+        source.write_bytes(b"%PDF-1.4\nuntranslatable\n")
+
+        with patch("collection_translation.pdf2zh_available", return_value=False), \
+            patch("collection_translation._post_json", return_value={}):
+            result = collection_translation.ensure_translated_pdf(source, "ITEM", destination)
+            destination_exists = destination.exists()
+            destination_size = destination.stat().st_size if destination.exists() else 0
+
+    assert result["status"] == "fallback"
+    assert destination_exists
+    assert destination_size > 0
 
 
 def test_zotero_markdown_index_links_artifacts_and_research_notes() -> None:
@@ -1827,6 +1904,9 @@ def test_orchestrator_commits_dirty_workspace_before_pull_with_explicit_paths() 
     assert commit == "abc1234"
     assert calls[0] == ["status", "--short"]
     assert ["add", "--", *start_my_day_orchestrator.WORKSPACE_SYNC_PATHS] in calls
+    assert "downloads" in start_my_day_orchestrator.WORKSPACE_SYNC_PATHS
+    assert "vault/.obsidian/app.json" in start_my_day_orchestrator.WORKSPACE_SYNC_PATHS
+    assert "vault/.obsidian/core-plugins.json" in start_my_day_orchestrator.WORKSPACE_SYNC_PATHS
     assert ["pull", "--rebase"] in calls
     assert ["push"] in calls
     assert ["add", "."] not in calls
@@ -1927,6 +2007,24 @@ def test_orchestrator_main_closes_chrome_after_success_and_failure() -> None:
 
     assert exit_code == 1
     assert closed == ["failure"]
+
+
+def test_orchestrator_chrome_cleanup_only_targets_automation_processes() -> None:
+    commands: list[list[str]] = []
+
+    def fake_run(command: list[str], **_: object) -> object:
+        commands.append(command)
+        return object()
+
+    with patch.object(sys, "platform", "win32"), patch("start_my_day_orchestrator.subprocess.run", side_effect=fake_run):
+        start_my_day_orchestrator.close_chrome_processes()
+
+    assert commands
+    script = commands[0][-1]
+    assert "Stop-Process -Name chrome" not in script
+    assert "Get-CimInstance Win32_Process" in script
+    assert "remote-debugging" in script
+    assert "user-data-dir" in script
 
 
 def test_orchestrator_git_push_failure_aborts_before_daily_email() -> None:
@@ -2070,7 +2168,7 @@ def test_reflect_parses_pending_comments_as_requests() -> None:
     assert "Zotero local API unavailable" in parsed["requests"][0]
 
 
-def test_orchestrator_blocks_daily_email_when_agent_decisions_are_missing() -> None:
+def test_orchestrator_creates_default_agent_decisions_when_missing() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         workspace_root = Path(temp_dir)
         vault_root = workspace_root / "vault"
@@ -2104,26 +2202,27 @@ def test_orchestrator_blocks_daily_email_when_agent_decisions_are_missing() -> N
             record["pdf_local_path"] = str(target)
             return target
 
-        with patch("start_my_day_orchestrator.ensure_zotero_available", return_value={"status": "unavailable", "error": "test outage"}), \
+        with patch("start_my_day_orchestrator.preflight_email_env"), \
+            patch("start_my_day_orchestrator.ensure_zotero_available", return_value={"status": "unavailable", "error": "test outage"}), \
             patch("start_my_day_orchestrator.discover_papers", return_value={"result": {}, "papers": [fake_record], "confirmed_records": [fake_record], "exploration_records": [], "artifact": "offline.json"}), \
             patch("start_my_day_orchestrator.download_pdf", side_effect=fake_download), \
             patch("start_my_day_orchestrator.cat_email.send_daily_markdown", side_effect=fake_send), \
             patch("start_my_day_orchestrator.prepare_workspace_git", return_value=""), \
             patch("start_my_day_orchestrator.workspace_has_changes", return_value=False):
-            try:
-                start_my_day_orchestrator.run_loop(
-                    workspace_root=workspace_root,
-                    run_date="2026-06-27",
-                    send_email=True,
-                    skip_git=False,
-                )
-            except start_my_day_orchestrator.ProductionGateError as exc:
-                error = str(exc)
-            else:
-                raise AssertionError("missing agent decisions should block production email")
+            result = start_my_day_orchestrator.run_loop(
+                workspace_root=workspace_root,
+                run_date="2026-06-27",
+                send_email=True,
+                skip_git=False,
+            )
 
-    assert "missing agent decision JSON" in error
-    assert sent == {}
+        decisions_path = vault_root / "99_System" / "Indexes" / "start_my_day_agent_decisions_2026-06-27.json"
+        decisions = json.loads(decisions_path.read_text(encoding="utf-8"))
+        assert decisions["preference_updates"] == {"interests": [], "avoids": []}
+        assert decisions["comment_answers"] == {}
+        assert result["agent_decisions"] == str(decisions_path)
+        assert result["email"]["status"] == "sent"
+        assert sent["body"]
 
 
 def test_orchestrator_uses_agent_analyzed_preferences_for_reflection() -> None:
@@ -2243,6 +2342,34 @@ def test_orchestrator_reconciles_zotero_collections_and_attachments() -> None:
     assert reconciled[0]["confirmed_keys"] == ["CONF123"]
     assert reconciled[0]["exploration_keys"] == ["EXPL123"]
     assert result["zotero_native"]["status"] == "ok"
+
+
+def test_orchestrator_reconcile_zotero_native_degrades_when_runjs_ui_unavailable() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        workspace_root = Path(temp_dir)
+        (workspace_root / "zotero" / "library" / "items").mkdir(parents=True)
+
+        with patch(
+            "start_my_day_orchestrator.zotero_runjs_collections.execute_in_runjs_window",
+            side_effect=RuntimeError("error: (2, 'SetCursorPos', 'system cannot find the file specified')"),
+        ):
+            result = start_my_day_orchestrator.reconcile_zotero_native(
+                workspace_root=workspace_root,
+                run_date="2026-06-27",
+                confirmed_keys=["CONF123"],
+                exploration_keys=[],
+                imported_keys=["COLL123"],
+                execute=True,
+            )
+
+        collection_script_exists = Path(str(result["collection_script"])).exists()
+        attachment_script_exists = Path(str(result["attachment_script"])).exists()
+
+    assert result["status"] == "scripted-ui-unavailable"
+    assert "SetCursorPos" in result["error"]
+    assert result["attachment_keys"] == ["CONF123", "COLL123"]
+    assert collection_script_exists
+    assert attachment_script_exists
 
 
 def test_daily_report_humanizes_daily_sections_without_changing_research_notes() -> None:
@@ -2427,6 +2554,36 @@ def test_zotero_relay_skill_and_sync_script_contract() -> None:
     assert "http.sslBackend=openssl" in sync_script
     assert "http.sslCAInfo" in sync_script
     assert "Start-Process -WindowStyle Hidden" in start_script
+
+
+def test_zotero_env_audit_reports_missing_required_plugins_and_xpis() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        profile = root / "profile.default"
+        plugins = root / "plugins-xpi"
+        profile.mkdir()
+        plugins.mkdir()
+        (profile / "extensions.json").write_text(
+            json.dumps(
+                {
+                    "schemaVersion": 37,
+                    "addons": [
+                        {"id": "jasminum@linxzh.com"},
+                        {"id": "pdf2zh@guaguastandup.com"},
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        (plugins / "jasminum@linxzh.com.xpi").write_bytes(b"xpi")
+        (plugins / "._jasminum@linxzh.com.xpi").write_bytes(b"appledouble")
+
+        result = zotero_env_audit.audit_environment(profile, plugins)
+
+    assert result["status"] == "missing_required_plugins"
+    assert "jasminum@linxzh.com" in result["active_addon_ids"]
+    assert "zoterotag@euclpts.com" in result["missing_required"]
+    assert result["available_xpi_files"] == ["jasminum@linxzh.com.xpi"]
 
 
 def test_zotero_sync_writes_metadata_and_fallback_bibtex() -> None:
@@ -2631,6 +2788,37 @@ def test_zotero_sync_copies_parent_child_attachment_pdfs() -> None:
     assert translated_exists
 
 
+def test_zotero_sync_overwrites_readonly_mirror_pdf() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        storage = root / "storage"
+        zotero_repo = root / "zotero"
+        source_dir = storage / "ITEMKEY"
+        target_dir = zotero_repo / "library" / "items"
+        source_dir.mkdir(parents=True)
+        target_dir.mkdir(parents=True)
+        (source_dir / "Paper.pdf").write_bytes(b"%PDF-1.4\nfresh\n")
+        target = target_dir / "ITEMKEY.pdf"
+        target.write_bytes(b"%PDF-1.4\nstale\n")
+        target.chmod(0o444)
+
+        try:
+            result = zotero_sync.sync_items(
+                item_keys=["ITEMKEY"],
+                zotero_storage=storage,
+                translated_dir=root / "translated",
+                bib_export=root / "missing.bib",
+                zotero_repo=zotero_repo,
+                item_metadata={},
+            )
+            target_text = target.read_bytes()
+        finally:
+            target.chmod(0o666)
+
+    assert target_text == b"%PDF-1.4\nfresh\n"
+    assert str(target) in result["copied"]
+
+
 def test_zotero_closure_audit_reports_duplicates_and_missing_attachments() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         items_dir = Path(temp_dir)
@@ -2734,6 +2922,7 @@ def test_zotero_runjs_dedupe_plans_canonical_and_trash_duplicates() -> None:
 def main() -> int:
     tests = [
         test_safety_scan_rejects_secret_text,
+        test_safety_scan_skips_binary_pdf_content,
         test_reflect_updates_preferences_and_writes_diff,
         test_reflect_blocks_raw_interest_config_without_agent_analysis,
         test_zotero_ingest_marks_needs_pdf_when_attachment_fails,
@@ -2758,7 +2947,9 @@ def main() -> int:
         test_collections_import_keeps_pending_verification_pdf_in_place,
         test_collections_import_keeps_pdf_pending_when_runjs_window_missing,
         test_collections_import_refreshes_translation_for_already_imported_pdf,
+        test_collections_import_recovers_same_day_archived_pdf_on_rerun,
         test_collection_translation_downloads_filelist_output_when_not_on_disk,
+        test_collection_translation_writes_fallback_pdf_when_pdf2zh_fails,
         test_zotero_markdown_index_links_artifacts_and_research_notes,
         test_research_index_creates_note_without_placeholder_text,
         test_research_index_enriches_collection_pdf_before_note_generation,
@@ -2783,15 +2974,17 @@ def main() -> int:
         test_orchestrator_git_rebase_failure_main_suppresses_failure_email,
         test_orchestrator_non_git_failure_main_keeps_failure_email,
         test_orchestrator_main_closes_chrome_after_success_and_failure,
+        test_orchestrator_chrome_cleanup_only_targets_automation_processes,
         test_orchestrator_git_push_failure_aborts_before_daily_email,
         test_orchestrator_auto_starts_zotero_when_local_api_is_down,
         test_orchestrator_reports_zotero_diagnostics_when_auto_start_fails,
         test_orchestrator_retries_zotero_probe_before_declaring_available,
         test_orchestrator_failure_notice_uses_mailer_without_secrets,
         test_reflect_parses_pending_comments_as_requests,
-        test_orchestrator_blocks_daily_email_when_agent_decisions_are_missing,
+        test_orchestrator_creates_default_agent_decisions_when_missing,
         test_orchestrator_uses_agent_analyzed_preferences_for_reflection,
         test_orchestrator_reconciles_zotero_collections_and_attachments,
+        test_orchestrator_reconcile_zotero_native_degrades_when_runjs_ui_unavailable,
         test_daily_report_humanizes_daily_sections_without_changing_research_notes,
         test_start_my_day_daily_syncs_zotero_before_note_generation,
         test_task_scheduler_start_my_day_wrapper_contract,
@@ -2799,12 +2992,14 @@ def main() -> int:
         test_relay_credentials_cli_accepts_windows_utf8_bom_input,
         test_git_tls_relay_generates_local_certificate_pair,
         test_zotero_relay_skill_and_sync_script_contract,
+        test_zotero_env_audit_reports_missing_required_plugins_and_xpis,
         test_zotero_sync_writes_metadata_and_fallback_bibtex,
         test_zotero_sync_does_not_overwrite_bibtex_with_attachments,
         test_zotero_sync_ignores_plain_pdf_when_matching_translation_by_title,
         test_zotero_sync_lists_top_level_regular_items_from_local_api,
         test_zotero_sync_paginates_local_api_item_listing,
         test_zotero_sync_copies_parent_child_attachment_pdfs,
+        test_zotero_sync_overwrites_readonly_mirror_pdf,
         test_zotero_closure_audit_reports_duplicates_and_missing_attachments,
         test_zotero_runjs_dedupe_plans_canonical_and_trash_duplicates,
     ]

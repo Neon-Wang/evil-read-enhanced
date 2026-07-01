@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import stat
 from pathlib import Path
 import re
 import shutil
@@ -18,6 +19,12 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import safety_scan
+
+
+def copy2_replace(source: Path, destination: Path) -> None:
+    if destination.exists():
+        destination.chmod(destination.stat().st_mode | stat.S_IWRITE)
+    shutil.copy2(source, destination)
 
 
 def find_first_pdf(source_dir: Path) -> Path | None:
@@ -34,7 +41,7 @@ def copy_first_pdf(source_dir: Path, destination: Path) -> Path | None:
     if source_pdf is None:
         return None
     destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source_pdf, destination)
+    copy2_replace(source_pdf, destination)
     return source_pdf
 
 
@@ -95,7 +102,7 @@ def copy_matching_translation(
     if not matches:
         return False
     destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(matches[0], destination)
+    copy2_replace(matches[0], destination)
     return True
 
 
@@ -125,10 +132,10 @@ def copy_item_pdfs(
                 raw_source = raw_source or pdf
     if raw_source:
         raw_destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(raw_source, raw_destination)
+        copy2_replace(raw_source, raw_destination)
     if translated_source:
         translated_destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(translated_source, translated_destination)
+        copy2_replace(translated_source, translated_destination)
     elif copy_matching_translation(translated_dir, item_key, translated_destination, raw_source):
         translated_source = translated_destination
     return raw_source, translated_source
@@ -320,7 +327,7 @@ def sync_items(
     if bib_export.exists():
         export_dir.mkdir(parents=True, exist_ok=True)
         bib_destination = export_dir / "library.bib"
-        shutil.copy2(bib_export, bib_destination)
+        copy2_replace(bib_export, bib_destination)
         copied.append(str(bib_destination))
     elif item_metadata:
         fallback_bibtex = write_fallback_bibtex(item_keys, item_metadata, zotero_repo)

@@ -40,6 +40,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:/Users/O2/Documents/G
 - CAT/cf_relay credentials 只从环境变量读取，不写入代码、workspace 或日志。
 - Zotero local API 不可用时，orchestrator 会尝试启动 Zotero 并轮询；仍失败时生成降级日报、发送邮件，并在 comments 中写入 `pending:`，下次 Start My Day 继续补。
 - `git pull --rebase` 冲突或 `git push` 失败时任务失败并禁止发送日报或失败通知邮件，避免在 workspace 同步状态不确定时发出误导性日报。
+- 新机器或修复过 Zotero 的机器必须先通过 `docs/zotero-environment.md` 的插件环境审计；`tools/zotero_env_audit.py` 若报告 `missing_required_plugins`，生产 `start-my-day` 不算绿灯。
 - Zotero 闭环硬要求：
   - 导入 discovered papers 前必须按 DOI 优先、标题兜底查重；已有 Zotero 父条目必须复用，禁止重复 `saveItems`。
   - 本轮 Confirmed / Exploration 必须进入 Zotero native collection：`Confirmed/<YYYY-MM-DD>`、`Exploration/<YYYY-MM-DD>`。
@@ -49,6 +50,20 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:/Users/O2/Documents/G
   - 生产验收必须运行 `tools/zotero_closure_audit.py`；`duplicate_title_groups`、`zotero_parent_missing_mirror_json`、`mirror_json_not_in_zotero_parent`、`missing_original_attachment_for_mirrored_pdf`、`missing_translated_attachment_for_mirrored_pdf` 都必须为 0。
   - 历史重复项用 `tools/zotero_runjs_dedupe.py --execute --archive-mirror` 非破坏性处理：canonical 保留，重复父条目打 `evilread:duplicate-of:<canonical>` 后移入 Zotero Trash，duplicate mirror 文件移入 `_deduped/<timestamp>/`。
   - 历史 mirror-only 论文用 `tools/zotero_runjs_import_mirror_items.py` 导入 Zotero 本体；若 Zotero 生成了不同 parent key，必须把 mirror 文件重映射到实际 parent key。
+
+## Zotero 环境门禁
+
+生产 `start-my-day` 依赖 Zotero 本体插件、local API、PDF2zh 和 workspace mirror 同时对齐。不要把 `evilread-workspace/zotero` mirror 当成 Zotero 环境已经正确的证明。
+
+1. 按 `docs/zotero-environment.md` 安装并核对 Zotero 插件。
+2. 运行：
+   ```powershell
+   C:/Users/O2/Documents/GitHub/evil-read-enhanced/.venv/Scripts/python.exe `
+     C:/Users/O2/Documents/GitHub/evil-read-enhanced/tools/zotero_env_audit.py `
+     --plugin-source "C:/Users/O2/Documents/Zotero-preparation/zotero-migration-extracted/zotero-migration-20260620-165339/plugins-xpi"
+   ```
+3. `status: ok` 才能继续生产运行；如果是 `missing_required_plugins`，先在 Zotero `Tools -> Add-ons -> Install Add-on From File` 安装缺失 XPI 并重启 Zotero。
+4. 插件 XPI、Zotero profile、`prefs.js`、`zotero.sqlite`、PDF2zh `.env` 和任何 credential 都不能提交到仓库。
 
 ## 5 阶段工作流
 
